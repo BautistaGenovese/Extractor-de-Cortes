@@ -2,10 +2,19 @@ from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession, async_sess
 from sqlalchemy.orm import declarative_base
 from app.config import settings
 
-# Creación del motor asíncrono para PostgreSQL
+db_url = settings.DATABASE_URL
+
+if db_url.startswith("postgresql://"):
+    db_url = db_url.replace("postgresql://", "postgresql+asyncpg://", 1)
+elif db_url.startswith("postgres://"):
+    db_url = db_url.replace("postgres://", "postgresql+asyncpg://", 1)
+
+if "sslmode=" in db_url:
+    db_url = db_url.replace("sslmode=", "ssl=")
+
 engine = create_async_engine(
-    settings.DATABASE_URL,
-    echo=True, # Nos mostrará en la consola los comandos SQL que ejecuta
+    db_url,
+    echo=True,
     connect_args={"statement_cache_size": 0}
 )
 
