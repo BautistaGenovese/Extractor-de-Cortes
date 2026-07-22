@@ -5,8 +5,6 @@ import TablaCortes from './components/TablaCortes';
 import Historial from './components/Historial';
 import { apiService } from './api';
 import { UploadCloud, Folder, ArrowLeft } from 'lucide-react';
-import { useToast } from './components/Toaster';
-import { useConfirm } from './components/ConfirmModal';
 
 const ID_USUARIO_PRUEBA = '1fcbdbdc-4ecf-4a47-8008-5758bd8a3c31';
 
@@ -32,9 +30,6 @@ export default function App() {
   }, [isDarkMode]);
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
-
-  const toast = useToast();
-  const confirm = useConfirm();
 
   const [usuario, setUsuario] = useState(null);
   const [pestanaActiva, setPestanaActiva] = useState('nuevo');
@@ -74,7 +69,7 @@ export default function App() {
       });
       setSoloLectura(false);
     } catch (err) {
-      toast(err.response?.data?.detail || 'Error al analizar las fotos.', 'error', 5000);
+      alert(err.response?.data?.detail || 'Error al analizar las fotos.');
     } finally {
       setCargandoAnalisis(false);
     }
@@ -85,10 +80,10 @@ export default function App() {
     try {
       if (trabajoEnEdicionId) {
         await apiService.actualizarTrabajo(trabajoEnEdicionId, nuevoNombre, cortesEditados);
-        toast('¡Trabajo actualizado exitosamente!', 'success');
+        alert('¡Trabajo actualizado exitosamente!');
       } else {
         await apiService.guardarTrabajo(ID_USUARIO_PRUEBA, nuevoNombre, cortesEditados);
-        toast('¡Trabajo guardado exitosamente!', 'success');
+        alert('¡Nuevo trabajo guardado exitosamente!');
       }
 
       setBorradorTrabajo(null);
@@ -97,7 +92,7 @@ export default function App() {
       setPestanaActiva('historial');
     } catch (err) {
       console.error('Error al guardar:', err);
-      toast('Ocurrió un error al intentar guardar el trabajo.', 'error', 5000);
+      alert('Ocurrió un error al intentar guardar el trabajo.');
     } finally {
       setCargandoGuardar(false);
     }
@@ -118,18 +113,13 @@ export default function App() {
   };
 
   const handleEliminarTrabajo = async (idTrabajo) => {
-    const ok = await confirm(
-      '¿Seguro que deseas eliminar este trabajo? Esta acción no se puede deshacer.',
-      { confirmText: 'Eliminar', danger: true }
-    );
-    if (!ok) return;
+    if (!window.confirm('¿Seguro que deseas eliminar este trabajo?')) return;
     try {
       await apiService.eliminarTrabajo(idTrabajo);
       await cargarDatos();
-      toast('Trabajo eliminado correctamente.', 'info');
     } catch (err) {
       console.error(err);
-      toast('Error al eliminar el trabajo.', 'error', 5000);
+      alert('Error al eliminar el trabajo.');
     }
   };
 
@@ -154,8 +144,8 @@ export default function App() {
               <button
                 onClick={() => setPestanaActiva('nuevo')}
                 className={`relative z-10 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-label-sm font-bold text-label-sm transition-all duration-300 ${pestanaActiva === 'nuevo'
-                    ? 'text-stitch-on-secondary-container'
-                    : 'text-stitch-text-muted hover:text-stitch-text hover:bg-stitch-lavender/50'
+                  ? 'text-stitch-on-secondary-container'
+                  : 'text-stitch-text-muted hover:text-stitch-text hover:bg-stitch-lavender/50'
                   }`}
               >
                 <UploadCloud className="w-5 h-5" />
@@ -165,8 +155,8 @@ export default function App() {
               <button
                 onClick={() => setPestanaActiva('historial')}
                 className={`relative z-10 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-label-sm font-bold text-label-sm transition-all duration-300 ${pestanaActiva === 'historial'
-                    ? 'text-stitch-on-secondary-container'
-                    : 'text-stitch-text-muted hover:text-stitch-text hover:bg-stitch-lavender/50'
+                  ? 'text-stitch-on-secondary-container'
+                  : 'text-stitch-text-muted hover:text-stitch-text hover:bg-stitch-lavender/50'
                   }`}
               >
                 <Folder className="w-5 h-5" />
