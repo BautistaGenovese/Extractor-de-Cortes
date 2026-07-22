@@ -5,6 +5,8 @@ import TablaCortes from './components/TablaCortes';
 import Historial from './components/Historial';
 import { apiService } from './api';
 import { UploadCloud, Folder, ArrowLeft } from 'lucide-react';
+import { useToast } from './components/Toaster';
+import { useConfirm } from './components/ConfirmModal';
 
 const ID_USUARIO_PRUEBA = '1fcbdbdc-4ecf-4a47-8008-5758bd8a3c31';
 
@@ -31,11 +33,18 @@ export default function App() {
 
   const toggleTheme = () => setIsDarkMode(!isDarkMode);
 
+  const toast = useToast();
+  const confirm = useConfirm();
+
   const [usuario, setUsuario] = useState(null);
   const [pestanaActiva, setPestanaActiva] = useState('nuevo');
   const [cargandoAnalisis, setCargandoAnalisis] = useState(false);
   const [cargandoGuardar, setCargandoGuardar] = useState(false);
   const [soloLectura, setSoloLectura] = useState(false);
+
+  // Estados persistentes del borrador/escaneo actual
+  const [nombreDraft, setNombreDraft] = useState('');
+  const [archivosDraft, setArchivosDraft] = useState([]);
 
   const [borradorTrabajo, setBorradorTrabajo] = useState(null);
   const [trabajoEnEdicionId, setTrabajoEnEdicionId] = useState(null);
@@ -54,7 +63,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
     cargarDatos();
   }, []);
 
@@ -69,7 +77,7 @@ export default function App() {
       });
       setSoloLectura(false);
     } catch (err) {
-      alert(err.response?.data?.detail || 'Error al analizar las fotos.');
+      toast(err.response?.data?.detail || 'Error al analizar las fotos.', 'error', 5000);
     } finally {
       setCargandoAnalisis(false);
     }
@@ -80,19 +88,21 @@ export default function App() {
     try {
       if (trabajoEnEdicionId) {
         await apiService.actualizarTrabajo(trabajoEnEdicionId, nuevoNombre, cortesEditados);
-        alert('¡Trabajo actualizado exitosamente!');
+        toast('¡Trabajo actualizado exitosamente!', 'success');
       } else {
         await apiService.guardarTrabajo(ID_USUARIO_PRUEBA, nuevoNombre, cortesEditados);
-        alert('¡Nuevo trabajo guardado exitosamente!');
+        toast('¡Trabajo guardado exitosamente!', 'success');
       }
 
       setBorradorTrabajo(null);
       setTrabajoEnEdicionId(null);
+      setNombreDraft('');
+      setArchivosDraft([]);
       await cargarDatos();
       setPestanaActiva('historial');
     } catch (err) {
       console.error('Error al guardar:', err);
-      alert('Ocurrió un error al intentar guardar el trabajo.');
+      toast('Ocurrió un error al intentar guardar el trabajo.', 'error', 5000);
     } finally {
       setCargandoGuardar(false);
     }
@@ -105,21 +115,29 @@ export default function App() {
       cortes: trabajo.cortes,
     });
     setSoloLectura(readonly);
+    setPestanaActiva('historial');
   };
 
   const handleCancelarEdicion = () => {
     setBorradorTrabajo(null);
     setTrabajoEnEdicionId(null);
+    setNombreDraft('');
+    setArchivosDraft([]);
   };
 
   const handleEliminarTrabajo = async (idTrabajo) => {
-    if (!window.confirm('¿Seguro que deseas eliminar este trabajo?')) return;
+    const ok = await confirm(
+      '¿Seguro que deseas eliminar este trabajo? Esta acción no se puede deshacer.',
+      { confirmText: 'Eliminar', danger: true }
+    );
+    if (!ok) return;
     try {
       await apiService.eliminarTrabajo(idTrabajo);
       await cargarDatos();
+      toast('Trabajo eliminado correctamente.', 'info');
     } catch (err) {
       console.error(err);
-      alert('Error al eliminar el trabajo.');
+      toast('Error al eliminar el trabajo.', 'error', 5000);
     }
   };
 
@@ -128,76 +146,99 @@ export default function App() {
       <Navbar usuario={usuario} isDarkMode={isDarkMode} toggleTheme={toggleTheme} />
 
       <main className="container mx-auto px-3 py-4 md:px-4 md:py-6">
-        {/* Pestañas de Navegación solo si no estamos editando un borrador/trabajo */}
-        {!borradorTrabajo && (
-          <div className="flex justify-center mb-6 md:mb-12">
-            <div className="relative bg-stitch-surface-alt p-1.5 rounded-2xl shadow-sm border border-stitch-border/50 transition-colors inline-grid grid-cols-2 gap-1 w-full max-w-[420px]">
-              {/* Sliding Pill */}
-              <div
-                className="absolute top-1.5 bottom-1.5 bg-stitch-secondary-container rounded-xl shadow-sm transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-                style={{
-                  width: 'calc(50% - 8px)',
-                  left: pestanaActiva === 'nuevo' ? '6px' : 'calc(50% + 2px)'
-                }}
-              />
+        {/* Pestañas de Navegación (Siempre visibles) */}
+        <div className="flex justify-center mb-6 md:mb-12">
+          <div className="relative bg-stitch-surface-alt p-1.5 rounded-2xl shadow-sm border border-stitch-border/50 transition-colors inline-grid grid-cols-2 gap-1 w-full max-w-[420px]">
+            {/* Sliding Pill */}
+            <div
+              className="absolute top-1.5 bottom-1.5 bg-stitch-secondary-container rounded-xl shadow-sm transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+              style={{
+                width: 'calc(50% - 8px)',
+                left: pestanaActiva === 'nuevo' ? '6px' : 'calc(50% + 2px)'
+              }}
+            />
 
-              <button
-                onClick={() => setPestanaActiva('nuevo')}
-                className={`relative z-10 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-label-sm font-bold text-label-sm transition-all duration-300 ${pestanaActiva === 'nuevo'
-                  ? 'text-stitch-on-secondary-container'
-                  : 'text-stitch-text-muted hover:text-stitch-text hover:bg-stitch-lavender/50'
-                  }`}
-              >
-                <UploadCloud className="w-5 h-5" />
-                Nuevo Trabajo
-              </button>
+            <button
+              onClick={() => setPestanaActiva('nuevo')}
+              className={`relative z-10 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-label-sm font-bold text-label-sm transition-all duration-300 ${pestanaActiva === 'nuevo'
+                ? 'text-stitch-on-secondary-container'
+                : 'text-stitch-text-muted hover:text-stitch-text hover:bg-stitch-lavender/50'
+                }`}
+            >
+              <UploadCloud className="w-5 h-5" />
+              Nuevo Trabajo
+            </button>
 
-              <button
-                onClick={() => setPestanaActiva('historial')}
-                className={`relative z-10 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-label-sm font-bold text-label-sm transition-all duration-300 ${pestanaActiva === 'historial'
-                  ? 'text-stitch-on-secondary-container'
-                  : 'text-stitch-text-muted hover:text-stitch-text hover:bg-stitch-lavender/50'
-                  }`}
-              >
-                <Folder className="w-5 h-5" />
-                Historial ({trabajos.length})
-              </button>
-            </div>
+            <button
+              onClick={() => setPestanaActiva('historial')}
+              className={`relative z-10 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-label-sm font-bold text-label-sm transition-all duration-300 ${pestanaActiva === 'historial'
+                ? 'text-stitch-on-secondary-container'
+                : 'text-stitch-text-muted hover:text-stitch-text hover:bg-stitch-lavender/50'
+                }`}
+            >
+              <Folder className="w-5 h-5" />
+              Historial ({trabajos.length})
+            </button>
           </div>
-        )}
+        </div>
 
-        {/* Botón de volver si estamos en la vista de edición */}
-        {borradorTrabajo && (
+        {/* Botón de volver si estamos en la vista de edición de la pestaña correspondiente */}
+        {((pestanaActiva === 'nuevo' && borradorTrabajo && !trabajoEnEdicionId) ||
+          (pestanaActiva === 'historial' && borradorTrabajo && trabajoEnEdicionId)) && (
           <div className="max-w-6xl mx-auto mb-4">
             <button
               onClick={handleCancelarEdicion}
               className="text-xs text-stitch-text-muted hover:text-stitch-primary flex items-center gap-1.5 transition-colors"
             >
               <ArrowLeft className="w-4 h-4" />
-              Volver atrás
+              Volver atrás / Cancelar
             </button>
           </div>
         )}
 
-        {/* Renderizado condicional */}
-        {borradorTrabajo ? (
-          <TablaCortes
-            cortesIniciales={borradorTrabajo.cortes}
-            nombreTrabajoInicial={borradorTrabajo.nombre}
-            onGuardar={handleGuardar}
-            cargandoGuardar={cargandoGuardar}
-            soloLectura={soloLectura}
-            onActivarEdicion={() => setSoloLectura(false)}
-          />
-        ) : pestanaActiva === 'nuevo' ? (
-          <Dropzone onAnalizar={handleAnalizar} cargando={cargandoAnalisis} />
+        {/* Renderizado condicional por Pestaña */}
+        {pestanaActiva === 'nuevo' ? (
+          borradorTrabajo && !trabajoEnEdicionId ? (
+            <TablaCortes
+              cortesIniciales={borradorTrabajo.cortes}
+              nombreTrabajoInicial={borradorTrabajo.nombre}
+              onGuardar={handleGuardar}
+              cargandoGuardar={cargandoGuardar}
+              soloLectura={soloLectura}
+              onActivarEdicion={() => setSoloLectura(false)}
+              isNew={true}
+              fotos={archivosDraft}
+            />
+          ) : (
+            <Dropzone
+              onAnalizar={handleAnalizar}
+              cargando={cargandoAnalisis}
+              archivos={archivosDraft}
+              setArchivos={setArchivosDraft}
+              nombreTrabajo={nombreDraft}
+              setNombreTrabajo={setNombreDraft}
+            />
+          )
         ) : (
-          <Historial
-            trabajos={trabajos}
-            usuario={usuario}
-            onCargarParaEditar={handleCargarParaEditar}
-            onEliminarTrabajo={handleEliminarTrabajo}
-          />
+          borradorTrabajo && trabajoEnEdicionId ? (
+            <TablaCortes
+              cortesIniciales={borradorTrabajo.cortes}
+              nombreTrabajoInicial={borradorTrabajo.nombre}
+              onGuardar={handleGuardar}
+              cargandoGuardar={cargandoGuardar}
+              soloLectura={soloLectura}
+              onActivarEdicion={() => setSoloLectura(false)}
+              isNew={false}
+              fotos={[]}
+            />
+          ) : (
+            <Historial
+              trabajos={trabajos}
+              usuario={usuario}
+              onCargarParaEditar={handleCargarParaEditar}
+              onEliminarTrabajo={handleEliminarTrabajo}
+            />
+          )
         )}
       </main>
     </div>

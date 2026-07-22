@@ -1,11 +1,8 @@
-import { useState } from 'react';
 import { UploadCloud, Image as ImageIcon, X, Sparkles, Loader2 } from 'lucide-react';
 import { useToast } from './Toaster';
 
-export default function Dropzone({ onAnalizar, cargando }) {
+export default function Dropzone({ onAnalizar, cargando, archivos, setArchivos, nombreTrabajo, setNombreTrabajo }) {
   const toast = useToast();
-  const [archivos, setArchivos] = useState([]);
-  const [nombreTrabajo, setNombreTrabajo] = useState('');
 
   const handleFileChange = (e) => {
     const seleccionados = Array.from(e.target.files);

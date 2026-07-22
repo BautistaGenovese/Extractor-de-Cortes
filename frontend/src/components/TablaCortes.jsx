@@ -1,8 +1,30 @@
-import React, { useState, useRef } from 'react';
-import { Plus, Trash2, CheckCircle, Edit2, AlertCircle, Copy, Download } from 'lucide-react';
+import React, { useState, useRef, useEffect } from 'react';
+import { Plus, Trash2, CheckCircle, Edit2, AlertCircle, Copy, Download, Check, Loader2 } from 'lucide-react';
 import { useToast } from './Toaster';
 
-export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onGuardar, cargandoGuardar, soloLectura, onActivarEdicion }) {
+function ImageThumbnail({ file }) {
+  const [src, setSrc] = useState('');
+  useEffect(() => {
+    const url = URL.createObjectURL(file);
+    setSrc(url);
+    return () => URL.revokeObjectURL(url);
+  }, [file]);
+
+  if (!src) return null;
+  return (
+    <div className="relative group w-20 h-20 md:w-24 md:h-24 rounded-xl overflow-hidden border border-stitch-border/60 shadow-sm bg-stitch-surface">
+      <img
+        src={src}
+        alt={file.name}
+        className="w-full h-full object-cover hover:scale-105 transition-transform duration-200 cursor-pointer"
+        onClick={() => window.open(src, '_blank')}
+        title="Ver imagen completa"
+      />
+    </div>
+  );
+}
+
+export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onGuardar, cargandoGuardar, soloLectura, onActivarEdicion, isNew, fotos }) {
   const toast = useToast();
 
   const [cortes, setCortes] = useState(
@@ -12,6 +34,7 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
   );
   const [nombreTrabajo, setNombreTrabajo] = useState(nombreTrabajoInicial || 'Trabajo sin nombre');
   const [intentosGuardado, setIntentosGuardado] = useState(false);
+  const [copiado, setCopiado] = useState(false);
   // Set de índices con el panel de edición expandido (solo mobile)
   const [expandedRows, setExpandedRows] = useState(() => new Set());
 
@@ -126,9 +149,11 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
 
   const handleCopiarTxt = () => {
     if (verificarErrores()) return;
-    navigator.clipboard.writeText(generarTxt()).then(() =>
-      toast('¡Texto copiado al portapapeles!', 'success')
-    );
+    navigator.clipboard.writeText(generarTxt()).then(() => {
+      setCopiado(true);
+      toast('¡Texto copiado al portapapeles!', 'success');
+      setTimeout(() => setCopiado(false), 2000);
+    });
   };
 
   const handleDescargarTxt = () => {
@@ -148,8 +173,8 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
   const handleConfirmar = () => {
     if (verificarErrores()) return;
 
-    // Evitar llamadas innecesarias si no hubo ningún cambio
-    if (!hayaCambios()) {
+    // Evitar llamadas innecesarias si no es un trabajo nuevo y no hubo ningún cambio
+    if (!isNew && !hayaCambios()) {
       toast('No realizaste ningún cambio.', 'info');
       return;
     }
@@ -211,6 +236,20 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
             </div>
           </div>
         </div>
+
+        {/* Imágenes cargadas persistentes */}
+        {fotos && fotos.length > 0 && (
+          <div className="mb-5 bg-stitch-surface-alt/40 border border-stitch-border/30 rounded-2xl p-4">
+            <label className="block text-xs font-bold text-stitch-text-muted mb-2.5 uppercase tracking-wider">
+              Imágenes del Escaneo ({fotos.length})
+            </label>
+            <div className="flex flex-wrap gap-2.5">
+              {fotos.map((file, idx) => (
+                <ImageThumbnail key={idx} file={file} />
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ═══════════════════════════════════════════════
             VISTA MOBILE — Cards colapsables por pieza
@@ -550,10 +589,14 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
             )}
             <button
               onClick={handleCopiarTxt}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-stitch-surface-alt text-stitch-text rounded-xl border border-stitch-border transition-all text-xs font-bold"
+              className={`flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border transition-all text-xs font-bold ${
+                copiado
+                  ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 dark:border-emerald-500/20'
+                  : 'bg-stitch-surface-alt text-stitch-text border-stitch-border'
+              }`}
             >
-              <Copy className="w-4 h-4" />
-              Copiar
+              {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copiado ? 'Copiado' : 'Copiar'}
             </button>
             <button
               onClick={handleDescargarTxt}
@@ -579,8 +622,12 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
               disabled={cargandoGuardar}
               className="w-full flex items-center justify-center gap-2.5 py-3.5 bg-stitch-primary text-stitch-on-primary rounded-xl font-bold shadow-lg shadow-stitch-primary/25 transition-all active:scale-[0.98] disabled:opacity-50 text-base"
             >
-              <CheckCircle className="w-5 h-5" />
-              Confirmar y Guardar
+              {cargandoGuardar ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <CheckCircle className="w-5 h-5" />
+              )}
+              {cargandoGuardar ? 'Guardando...' : 'Confirmar y Guardar'}
             </button>
           )}
         </div>
@@ -600,10 +647,14 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
             <div className="flex items-center gap-2">
               <button
                 onClick={handleCopiarTxt}
-                className="flex items-center gap-2 px-4 py-3 bg-stitch-surface-alt hover:brightness-95 rounded-xl text-stitch-text transition-all border border-stitch-border"
+                className={`flex items-center gap-2 px-4 py-3 hover:brightness-95 rounded-xl transition-all border ${
+                  copiado
+                    ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 dark:border-emerald-500/20'
+                    : 'bg-stitch-surface-alt text-stitch-text border-stitch-border'
+                }`}
               >
-                <Copy className="w-4 h-4" />
-                <span className="text-xs font-bold">Copiar (.TXT)</span>
+                {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span className="text-xs font-bold">{copiado ? '¡Copiado!' : 'Copiar (.TXT)'}</span>
               </button>
               <button
                 onClick={handleDescargarTxt}
@@ -630,8 +681,12 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
                 disabled={cargandoGuardar}
                 className="flex items-center gap-3 px-8 py-3.5 bg-stitch-primary text-stitch-on-primary rounded-full font-bold shadow-xl hover:shadow-stitch-primary/30 hover:scale-[1.02] transition-all active:scale-95 disabled:opacity-50 disabled:scale-100"
               >
-                <CheckCircle className="w-6 h-6" />
-                <span className="text-lg">Confirmar y Guardar</span>
+                {cargandoGuardar ? (
+                  <Loader2 className="w-6 h-6 animate-spin" />
+                ) : (
+                  <CheckCircle className="w-6 h-6" />
+                )}
+                <span className="text-lg">{cargandoGuardar ? 'Guardando...' : 'Confirmar y Guardar'}</span>
               </button>
             )}
           </div>
