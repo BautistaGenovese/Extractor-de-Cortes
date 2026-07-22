@@ -36,7 +36,7 @@ Extractor de Cortes es una aplicación web diseñada para carpinteros y talleres
 
 ### 1. Clonar el repositorio
 ```bash
-git clone <url-del-repositorio>
+git clone https://github.com/BautistaGenovese/Extractor-de-Cortes.git
 cd "Extractor de Cortes"
 ```
 
