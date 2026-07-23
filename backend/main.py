@@ -40,3 +40,7 @@ app.include_router(usuarios.router)
 @app.get("/")
 async def root():
     return {"status": "ok", "message": "API del Extractor de Cortes lista y escuchando"}
+
+@app.get("/api/status")
+async def get_status():
+    return {"status": "connected"}

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { Routes, Route, useNavigate, useLocation, Navigate, useParams } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Dropzone from './components/Dropzone';
 import TablaCortes from './components/TablaCortes';
@@ -34,9 +35,15 @@ export default function App() {
 
   const toast = useToast();
   const confirm = useConfirm();
+  const navigate = useNavigate();
+  const location = useLocation();
 
   const [usuario, setUsuario] = useState(null);
-  const [pestanaActiva, setPestanaActiva] = useState('nuevo');
+
+  // pestanaActiva is now derived from the URL
+  const isNuevo = location.pathname.startsWith('/nuevo') || location.pathname === '/';
+  const pestanaActiva = isNuevo ? 'nuevo' : 'historial';
+
   const [cargandoAnalisis, setCargandoAnalisis] = useState(false);
   const [cargandoGuardar, setCargandoGuardar] = useState(false);
   const [soloLectura, setSoloLectura] = useState(false);
@@ -68,7 +75,7 @@ export default function App() {
     const initAuth = async () => {
       if (isSignedIn) {
         setAuthTokenGetter(getToken);
-        
+
         if (user) {
           try {
             await apiService.syncUsuario({
@@ -125,7 +132,7 @@ export default function App() {
       setNombreDraft('');
       setArchivosDraft([]);
       await cargarDatos();
-      setPestanaActiva('historial');
+      navigate('/historial');
     } catch (err) {
       console.error('Error al guardar:', err);
       toast('Ocurrió un error al intentar guardar el trabajo.', 'error', 5000);
@@ -141,14 +148,24 @@ export default function App() {
       cortes: trabajo.cortes,
     });
     setSoloLectura(readonly);
-    setPestanaActiva('historial');
+    navigate(`/trabajo/${trabajo.id}`);
   };
 
   const handleCancelarEdicion = () => {
-    setBorradorTrabajo(null);
-    setTrabajoEnEdicionId(null);
-    setNombreDraft('');
-    setArchivosDraft([]);
+    if (pestanaActiva === 'nuevo') {
+      setBorradorTrabajo(null);
+      setTrabajoEnEdicionId(null);
+      setNombreDraft('');
+      setArchivosDraft([]);
+    } else {
+      // Actuar como el botón físico de Atrás del navegador si hay historial previo.
+      // Si el usuario cargó la URL directamente (sin historial), redirigir al historial reemplazando la vista.
+      if (window.history.state && window.history.state.idx > 0) {
+        navigate(-1);
+      } else {
+        navigate('/historial', { replace: true });
+      }
+    }
   };
 
   const handleEliminarTrabajo = async (idTrabajo) => {
@@ -173,7 +190,7 @@ export default function App() {
 
       <main className="container mx-auto px-3 py-4 md:px-4 md:py-6">
         {/* Pestañas de Navegación (Siempre visibles) */}
-        <div className="flex justify-center mb-6 md:mb-12">
+        <div className="flex justify-center mb-6 md:mb-0">
           <div className="relative bg-stitch-surface-alt p-1.5 rounded-2xl shadow-sm border border-stitch-border/50 transition-colors inline-grid grid-cols-2 gap-1 w-full max-w-[420px]">
             {/* Sliding Pill */}
             <div
@@ -185,7 +202,7 @@ export default function App() {
             />
 
             <button
-              onClick={() => setPestanaActiva('nuevo')}
+              onClick={() => navigate('/nuevo')}
               className={`relative z-10 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-label-sm font-bold text-label-sm transition-all duration-300 ${pestanaActiva === 'nuevo'
                 ? 'text-stitch-on-secondary-container'
                 : 'text-stitch-text-muted hover:text-stitch-text hover:bg-stitch-lavender/50'
@@ -196,7 +213,7 @@ export default function App() {
             </button>
 
             <button
-              onClick={() => setPestanaActiva('historial')}
+              onClick={() => navigate('/historial')}
               className={`relative z-10 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-label-sm font-bold text-label-sm transition-all duration-300 ${pestanaActiva === 'historial'
                 ? 'text-stitch-on-secondary-container'
                 : 'text-stitch-text-muted hover:text-stitch-text hover:bg-stitch-lavender/50'
@@ -208,9 +225,9 @@ export default function App() {
           </div>
         </div>
 
-        {/* Botón de volver si estamos en la vista de edición de la pestaña correspondiente */}
-        {((pestanaActiva === 'nuevo' && borradorTrabajo && !trabajoEnEdicionId) ||
-          (pestanaActiva === 'historial' && borradorTrabajo && trabajoEnEdicionId)) && (
+        {/* Botón de volver si estamos en la vista de edición */}
+        {((location.pathname === '/nuevo' && borradorTrabajo && !trabajoEnEdicionId) ||
+          location.pathname.startsWith('/trabajo/')) && (
             <div className="max-w-6xl mx-auto mb-4">
               <button
                 onClick={handleCancelarEdicion}
@@ -222,49 +239,93 @@ export default function App() {
             </div>
           )}
 
-        {/* Renderizado condicional por Pestaña */}
-        {pestanaActiva === 'nuevo' ? (
-          borradorTrabajo && !trabajoEnEdicionId ? (
-            <TablaCortes
-              cortesIniciales={borradorTrabajo.cortes}
-              nombreTrabajoInicial={borradorTrabajo.nombre}
-              onGuardar={handleGuardar}
-              cargandoGuardar={cargandoGuardar}
-              soloLectura={soloLectura}
-              onActivarEdicion={() => setSoloLectura(false)}
-              isNew={true}
-              fotos={archivosDraft}
-            />
-          ) : (
-            <Dropzone
-              onAnalizar={handleAnalizar}
-              cargando={cargandoAnalisis}
-              archivos={archivosDraft}
-              setArchivos={setArchivosDraft}
-            />
-          )
-        ) : (
-          borradorTrabajo && trabajoEnEdicionId ? (
-            <TablaCortes
-              cortesIniciales={borradorTrabajo.cortes}
-              nombreTrabajoInicial={borradorTrabajo.nombre}
-              onGuardar={handleGuardar}
-              cargandoGuardar={cargandoGuardar}
-              soloLectura={soloLectura}
-              onActivarEdicion={() => setSoloLectura(false)}
-              isNew={false}
-              fotos={[]}
-            />
-          ) : (
+        {/* Rutas de la Aplicación */}
+        <Routes>
+          <Route path="/" element={<Navigate to="/nuevo" replace />} />
+
+          <Route path="/nuevo" element={
+            borradorTrabajo && !trabajoEnEdicionId ? (
+              <TablaCortes
+                cortesIniciales={borradorTrabajo.cortes}
+                nombreTrabajoInicial={borradorTrabajo.nombre}
+                onGuardar={handleGuardar}
+                cargandoGuardar={cargandoGuardar}
+                soloLectura={soloLectura}
+                onActivarEdicion={() => setSoloLectura(false)}
+                isNew={true}
+                fotos={archivosDraft}
+              />
+            ) : (
+              <Dropzone
+                onAnalizar={handleAnalizar}
+                cargando={cargandoAnalisis}
+                archivos={archivosDraft}
+                setArchivos={setArchivosDraft}
+              />
+            )
+          } />
+
+          <Route path="/historial" element={
             <Historial
               trabajos={trabajos}
               usuario={usuario}
               onCargarParaEditar={handleCargarParaEditar}
               onEliminarTrabajo={handleEliminarTrabajo}
             />
-          )
-        )}
+          } />
+
+          <Route path="/trabajo/:id" element={
+            <TrabajoView
+              trabajos={trabajos}
+              borradorTrabajo={borradorTrabajo}
+              trabajoEnEdicionId={trabajoEnEdicionId}
+              onCargarParaEditar={handleCargarParaEditar}
+              handleGuardar={handleGuardar}
+              cargandoGuardar={cargandoGuardar}
+              soloLectura={soloLectura}
+              setSoloLectura={setSoloLectura}
+            />
+          } />
+        </Routes>
       </main>
     </div>
+  );
+}
+
+// Componente auxiliar para cargar un trabajo directo por URL si no está en estado
+function TrabajoView({ trabajos, borradorTrabajo, trabajoEnEdicionId, onCargarParaEditar, handleGuardar, cargandoGuardar, soloLectura, setSoloLectura }) {
+  const { id } = useParams();
+
+  useEffect(() => {
+    // Solo cargamos si el ID de la URL es distinto al que tenemos en memoria
+    if (trabajos.length > 0 && String(id) !== String(trabajoEnEdicionId)) {
+      const t = trabajos.find(x => String(x.id) === String(id));
+      if (t) {
+        onCargarParaEditar(t, true);
+      }
+    }
+  }, [id, trabajos, trabajoEnEdicionId, onCargarParaEditar]);
+
+  if (!borradorTrabajo || String(trabajoEnEdicionId) !== String(id)) {
+    return (
+      <div className="flex justify-center py-20 text-stitch-text-muted">
+        Cargando detalles del trabajo...
+      </div>
+    );
+  }
+
+  return (
+    <TablaCortes
+      jobId={id}
+      cortesIniciales={borradorTrabajo.cortes}
+      nombreTrabajoInicial={borradorTrabajo.nombre}
+      onGuardar={handleGuardar}
+      cargandoGuardar={cargandoGuardar}
+      soloLectura={soloLectura}
+      onActivarEdicion={() => setSoloLectura(false)}
+      onCancelarEdicion={() => setSoloLectura(true)}
+      isNew={false}
+      fotos={[]}
+    />
   );
 }

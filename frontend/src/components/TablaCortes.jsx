@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, CheckCircle, Edit2, AlertCircle, Copy, Download, Check, Loader2 } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Edit2, AlertCircle, Copy, Download, Check, Loader2, Activity, Scissors, FileText, FileSpreadsheet } from 'lucide-react';
 import { useToast } from './Toaster';
+import { apiService } from '../api';
 
 function ImageThumbnail({ file }) {
   const [src, setSrc] = useState('');
@@ -24,7 +25,7 @@ function ImageThumbnail({ file }) {
   );
 }
 
-export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onGuardar, cargandoGuardar, soloLectura, onActivarEdicion, isNew, fotos }) {
+export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInicial, onGuardar, cargandoGuardar, soloLectura, onActivarEdicion, onCancelarEdicion, isNew, fotos }) {
   const toast = useToast();
 
   const [cortes, setCortes] = useState(
@@ -114,10 +115,19 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
     return faltantes;
   };
 
+  const obtenerErrores = (corte) => {
+    const errores = [];
+    const largo = parseInt(corte.largo_mm);
+    const ancho = parseInt(corte.ancho_mm);
+    if (!isNaN(largo) && largo > 2750) errores.push('Largo > 2750mm');
+    if (!isNaN(ancho) && ancho > 1830) errores.push('Ancho > 1830mm');
+    return errores;
+  };
+
   const verificarErrores = () => {
     setIntentosGuardado(true);
     for (const c of cortes) {
-      if (obtenerCamposFaltantes(c).length > 0) return true;
+      if (obtenerCamposFaltantes(c).length > 0 || obtenerErrores(c).length > 0) return true;
     }
     return false;
   };
@@ -170,12 +180,19 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
     toast(`Archivo "${nombreTrabajo || 'trabajo'}.txt" descargado.`, 'success');
   };
 
+  // El botón de Excel ahora es un enlace directo <a> en el JSX para evitar bloqueos del navegador.
+  const handleDescargarExcel = (e) => {
+    if (e) e.preventDefault();
+    toast('Guarda el trabajo primero para exportar a Excel.', 'info');
+  };
+
   const handleConfirmar = () => {
     if (verificarErrores()) return;
 
     // Evitar llamadas innecesarias si no es un trabajo nuevo y no hubo ningún cambio
     if (!isNew && !hayaCambios()) {
       toast('No realizaste ningún cambio.', 'info');
+      if (onCancelarEdicion) onCancelarEdicion();
       return;
     }
 
@@ -195,6 +212,49 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
   // Clases reutilizables para campos de las cards mobile
   const mobileInputClass = 'w-full bg-stitch-surface border border-stitch-border/60 rounded-lg px-3 py-2.5 text-sm text-stitch-text focus:outline-none focus:border-stitch-primary transition-colors disabled:opacity-70';
   const mobileLabelClass = 'block text-[10px] font-bold uppercase tracking-wider text-stitch-text-muted mb-1.5';
+
+  // Calcula estadísticas (solo lectura)
+  const calcularEstadisticas = () => {
+    let materialOptimizado = 0; // m2
+    let cantoTotal = 0; // m
+    let totalBordesCanteados = 0;
+
+    cortes.forEach(c => {
+      const cant = parseInt(c.cantidad) || 0;
+      const largoM = (parseInt(c.largo_mm) || 0) / 1000;
+      const anchoM = (parseInt(c.ancho_mm) || 0) / 1000;
+      const tl = parseInt(c.tapacanto_largo) || 0;
+      const ta = parseInt(c.tapacanto_ancho) || 0;
+
+      // Material optimizado
+      materialOptimizado += (largoM * anchoM) * cant;
+
+      // Canto total
+      let cantoPorPieza = 0;
+      let bordesPorPieza = 0;
+
+      if (tl === 1) { cantoPorPieza += largoM; bordesPorPieza += 1; }
+      else if (tl === 2) { cantoPorPieza += largoM * 2; bordesPorPieza += 2; }
+
+      if (ta === 1) { cantoPorPieza += anchoM; bordesPorPieza += 1; }
+      else if (ta === 2) { cantoPorPieza += anchoM * 2; bordesPorPieza += 2; }
+
+      cantoTotal += cantoPorPieza * cant;
+      totalBordesCanteados += bordesPorPieza * cant;
+    });
+
+    // Despunte (4cm por borde) + 15% desperdicio del rollo
+    const demasiaDespunte = totalBordesCanteados * 0.04;
+    const cantoBruto = Math.ceil((cantoTotal + demasiaDespunte) * 1.15);
+
+    return {
+      materialOptimizado: materialOptimizado.toFixed(2),
+      cantoNeto: cantoTotal.toFixed(2),
+      cantoBruto: cantoBruto
+    };
+  };
+
+  const stats = soloLectura ? calcularEstadisticas() : null;
 
   return (
     <>
@@ -237,6 +297,44 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
           </div>
         </div>
 
+        {/* Estadísticas en modo lectura */}
+        {soloLectura && stats && (
+          <div className="grid grid-cols-2 gap-3 mb-5 md:mb-6">
+            <div className="bg-emerald-500/10 dark:bg-emerald-500/5 p-3 md:p-4 rounded-xl border border-emerald-500/20 flex flex-col md:flex-row items-center gap-2 md:gap-4 text-center md:text-left">
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+                <Activity className="w-4 h-4 md:w-5 md:h-5" />
+              </div>
+              <div>
+                <p className="text-emerald-700/70 dark:text-emerald-400/70 text-[10px] md:text-xs font-bold uppercase tracking-wider leading-tight">
+                  Material Optimizado
+                </p>
+                <p className="text-lg md:text-xl font-bold text-emerald-700 dark:text-emerald-400 leading-tight">
+                  {stats.materialOptimizado} m²
+                </p>
+              </div>
+            </div>
+
+            <div className="bg-indigo-500/10 dark:bg-indigo-500/5 p-3 md:p-4 rounded-xl border border-indigo-500/20 flex flex-col md:flex-row items-center gap-2 md:gap-4 text-center md:text-left">
+              <div className="w-8 h-8 md:w-10 md:h-10 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                <Scissors className="w-4 h-4 md:w-5 md:h-5" />
+              </div>
+              <div className="flex flex-col">
+                <p className="text-indigo-700/70 dark:text-indigo-400/70 text-[10px] md:text-xs font-bold uppercase tracking-wider leading-tight">
+                  Canto Total
+                </p>
+                <div className="flex flex-col items-center md:items-start">
+                  <p className="text-lg md:text-xl font-bold text-indigo-700 dark:text-indigo-400 leading-tight">
+                    {stats.cantoBruto} m
+                  </p>
+                  <p className="text-[10px] text-indigo-700/60 dark:text-indigo-400/60 font-medium leading-tight mt-0.5">
+                    Neto: {stats.cantoNeto} m
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Imágenes cargadas persistentes */}
         {fotos && fotos.length > 0 && (
           <div className="mb-5 bg-stitch-surface-alt/40 border border-stitch-border/30 rounded-2xl p-4">
@@ -257,26 +355,25 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
         <div className="md:hidden space-y-2.5">
           {cortes.map((c, idx) => {
             const faltantes = obtenerCamposFaltantes(c);
-            const tieneError = intentosGuardado && faltantes.length > 0;
+            const erroresVal = obtenerErrores(c);
+            const tieneError = intentosGuardado && (faltantes.length > 0 || erroresVal.length > 0);
             const isExpanded = expandedRows.has(idx);
 
             return (
               <div
                 key={idx}
-                className={`rounded-2xl border overflow-hidden transition-all duration-200 ${
-                  tieneError
-                    ? 'border-rose-400/70 card-error'
-                    : 'border-stitch-border/50'
-                } bg-stitch-surface-alt/40`}
+                className={`rounded-2xl border overflow-hidden transition-all duration-200 ${tieneError
+                  ? 'border-rose-400/70 card-error'
+                  : 'border-stitch-border/50'
+                  } bg-stitch-surface-alt/40`}
               >
                 {/* ── Card Header (siempre visible) ── */}
                 <div className="flex items-center gap-3 px-4 py-3">
                   {/* Número de pieza */}
-                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
-                    tieneError
-                      ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400'
-                      : 'bg-stitch-primary/10 text-stitch-primary'
-                  }`}>
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${tieneError
+                    ? 'bg-rose-100 text-rose-600 dark:bg-rose-900/40 dark:text-rose-400'
+                    : 'bg-stitch-primary/10 text-stitch-primary'
+                    }`}>
                     #{idx + 1}
                   </div>
 
@@ -286,10 +383,20 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
                       {c.descripcion?.trim() || 'Sin descripción'}
                     </p>
                     {tieneError ? (
-                      <p className="text-xs text-rose-500 font-medium flex items-center gap-1 mt-0.5">
-                        <AlertCircle className="w-3 h-3 shrink-0" />
-                        Faltan: {faltantes.join(', ')}
-                      </p>
+                      <div className="flex flex-col gap-0.5 mt-0.5">
+                        {faltantes.length > 0 && (
+                          <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            Faltan: {faltantes.join(', ')}
+                          </p>
+                        )}
+                        {erroresVal.length > 0 && (
+                          <p className="text-xs text-rose-500 font-medium flex items-center gap-1">
+                            <AlertCircle className="w-3 h-3 shrink-0" />
+                            Error: {erroresVal.join(', ')}
+                          </p>
+                        )}
+                      </div>
                     ) : (
                       <p className="text-xs text-stitch-text-muted mt-0.5">
                         {c.cantidad ? `${c.cantidad} ud` : '— ud'} · {c.largo_mm || '—'} × {c.ancho_mm || '—'} mm
@@ -302,11 +409,10 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
                     <div className="flex items-center gap-1.5 shrink-0">
                       <button
                         onClick={() => toggleRow(idx)}
-                        className={`p-2 rounded-xl transition-all duration-150 ${
-                          isExpanded
-                            ? 'bg-stitch-primary text-stitch-on-primary shadow-md'
-                            : 'bg-stitch-surface text-stitch-text-muted hover:text-stitch-primary border border-stitch-border/60'
-                        }`}
+                        className={`p-2 rounded-xl transition-all duration-150 ${isExpanded
+                          ? 'bg-stitch-primary text-stitch-on-primary shadow-md'
+                          : 'bg-stitch-surface text-stitch-text-muted hover:text-stitch-primary border border-stitch-border/60'
+                          }`}
                         title={isExpanded ? 'Cerrar' : 'Editar pieza'}
                       >
                         <Edit2 className="w-4 h-4" />
@@ -341,9 +447,8 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
                           value={c.cantidad ?? ''}
                           onChange={(e) => handleChange(idx, 'cantidad', e.target.value)}
                           disabled={soloLectura}
-                          className={`${mobileInputClass} text-center font-bold ${
-                            tieneError && isNaN(parseInt(c.cantidad)) ? 'border-rose-400 text-rose-500 placeholder-rose-300' : 'text-stitch-primary'
-                          }`}
+                          className={`${mobileInputClass} text-center font-bold ${tieneError && isNaN(parseInt(c.cantidad)) ? 'border-rose-400 text-rose-500 placeholder-rose-300' : 'text-stitch-primary'
+                            }`}
                         />
                       </div>
                       <div>
@@ -353,9 +458,8 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
                           value={c.largo_mm ?? ''}
                           onChange={(e) => handleChange(idx, 'largo_mm', e.target.value)}
                           disabled={soloLectura}
-                          className={`${mobileInputClass} text-center ${
-                            tieneError && isNaN(parseInt(c.largo_mm)) ? 'border-rose-400 text-rose-500' : ''
-                          }`}
+                          className={`${mobileInputClass} text-center ${tieneError && isNaN(parseInt(c.largo_mm)) ? 'border-rose-400 text-rose-500' : ''
+                            }`}
                         />
                       </div>
                       <div>
@@ -365,9 +469,8 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
                           value={c.ancho_mm ?? ''}
                           onChange={(e) => handleChange(idx, 'ancho_mm', e.target.value)}
                           disabled={soloLectura}
-                          className={`${mobileInputClass} text-center ${
-                            tieneError && isNaN(parseInt(c.ancho_mm)) ? 'border-rose-400 text-rose-500' : ''
-                          }`}
+                          className={`${mobileInputClass} text-center ${tieneError && isNaN(parseInt(c.ancho_mm)) ? 'border-rose-400 text-rose-500' : ''
+                            }`}
                         />
                       </div>
                     </div>
@@ -458,7 +561,8 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
             <tbody className="divide-y divide-stitch-border/20 transition-colors">
               {cortes.map((c, idx) => {
                 const faltantes = obtenerCamposFaltantes(c);
-                const tieneError = intentosGuardado && faltantes.length > 0;
+                const erroresVal = obtenerErrores(c);
+                const tieneError = intentosGuardado && (faltantes.length > 0 || erroresVal.length > 0);
                 return (
                   <React.Fragment key={idx}>
                     <tr className={`transition-colors ${tieneError ? 'fila-error border-2 border-stitch-danger' : 'hover:bg-stitch-surface-alt group'}`}>
@@ -549,9 +653,19 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
                     {tieneError && (
                       <tr className="bg-stitch-danger/10 border-b border-stitch-danger/20">
                         <td colSpan={8} className="px-4 py-2 text-xs text-stitch-danger font-semibold">
-                          <div className="flex items-center gap-1.5">
-                            <AlertCircle className="w-4 h-4 shrink-0" />
-                            <span>Debe de rellenar los campos faltantes: <strong>{faltantes.join(', ')}</strong></span>
+                          <div className="flex flex-col gap-1">
+                            {faltantes.length > 0 && (
+                              <div className="flex items-center gap-1.5">
+                                <AlertCircle className="w-4 h-4 shrink-0" />
+                                <span>Debe de rellenar los campos faltantes: <strong>{faltantes.join(', ')}</strong></span>
+                              </div>
+                            )}
+                            {erroresVal.length > 0 && (
+                              <div className="flex items-center gap-1.5">
+                                <AlertCircle className="w-4 h-4 shrink-0" />
+                                <span>Medidas incorrectas: <strong>{erroresVal.join(', ')}</strong></span>
+                              </div>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -587,24 +701,46 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
                 Agregar Pieza
               </button>
             )}
-            <button
-              onClick={handleCopiarTxt}
-              className={`flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border transition-all text-xs font-bold ${
-                copiado
-                  ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 dark:border-emerald-500/20'
-                  : 'bg-stitch-surface-alt text-stitch-text border-stitch-border'
-              }`}
-            >
-              {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copiado ? 'Copiado' : 'Copiar'}
-            </button>
-            <button
-              onClick={handleDescargarTxt}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 bg-stitch-surface-alt text-stitch-text rounded-xl border border-stitch-border transition-all text-xs font-bold"
-            >
-              <Download className="w-4 h-4" />
-              .TXT
-            </button>
+            {soloLectura && (
+              <>
+                <button
+                  onClick={handleCopiarTxt}
+                  className={`flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border transition-all text-xs font-bold ${copiado
+                    ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 dark:border-emerald-500/20'
+                    : 'bg-stitch-surface-alt text-stitch-text border-stitch-border'
+                    }`}
+                >
+                  {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  {copiado ? 'Copiado' : 'Copiar'}
+                </button>
+                <button
+                  onClick={handleDescargarTxt}
+                  className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-stitch-text-muted hover:text-stitch-primary hover:bg-stitch-primary/10 transition-all border border-stitch-border/50 hover:border-stitch-primary/30"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>.TXT</span>
+                </button>
+                {jobId ? (
+                  <a
+                    href={apiService.getExportarExcelUrl(jobId)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all border border-stitch-border/50 hover:border-emerald-500/30"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>EXCEL</span>
+                  </a>
+                ) : (
+                  <button
+                    onClick={handleDescargarExcel}
+                    className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600/50 dark:text-emerald-500/50 transition-all border border-stitch-border/50 cursor-not-allowed"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>EXCEL</span>
+                  </button>
+                )}
+              </>
+            )}
           </div>
 
           {/* Fila 2: acción principal */}
@@ -644,26 +780,46 @@ export default function TablaCortes({ cortesIniciales, nombreTrabajoInicial, onG
                 <span>Agregar Pieza</span>
               </button>
             )}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={handleCopiarTxt}
-                className={`flex items-center gap-2 px-4 py-3 hover:brightness-95 rounded-xl transition-all border ${
-                  copiado
+            {soloLectura && (
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={handleCopiarTxt}
+                  className={`flex items-center gap-2 px-3.5 py-2.5 hover:brightness-95 rounded-xl transition-all border ${copiado
                     ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 dark:border-emerald-500/20'
                     : 'bg-stitch-surface-alt text-stitch-text border-stitch-border'
-                }`}
-              >
-                {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                <span className="text-xs font-bold">{copiado ? '¡Copiado!' : 'Copiar (.TXT)'}</span>
-              </button>
-              <button
-                onClick={handleDescargarTxt}
-                className="flex items-center gap-2 px-4 py-3 bg-stitch-surface-alt hover:brightness-95 rounded-xl text-stitch-text transition-all border border-stitch-border"
-              >
-                <Download className="w-4 h-4" />
-                <span className="text-xs font-bold">Descargar (.TXT)</span>
-              </button>
-            </div>
+                    }`}
+                >
+                  {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                  <span className="text-xs font-bold">{copiado ? '¡Copiado!' : 'Copiar'}</span>
+                </button>
+                <button
+                  onClick={handleDescargarTxt}
+                  className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-stitch-text-muted hover:text-stitch-primary hover:bg-stitch-primary/10 transition-all border border-stitch-border/50 hover:border-stitch-primary/30"
+                >
+                  <FileText className="w-4 h-4" />
+                  <span>.TXT</span>
+                </button>
+                {jobId ? (
+                  <a
+                    href={apiService.getExportarExcelUrl(jobId)}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all border border-stitch-border/50 hover:border-emerald-500/30"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>EXCEL</span>
+                  </a>
+                ) : (
+                  <button
+                    onClick={handleDescargarExcel}
+                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600/50 dark:text-emerald-500/50 transition-all border border-stitch-border/50 cursor-not-allowed"
+                  >
+                    <FileSpreadsheet className="w-4 h-4" />
+                    <span>EXCEL</span>
+                  </button>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-4">

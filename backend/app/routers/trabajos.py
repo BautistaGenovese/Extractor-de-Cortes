@@ -23,7 +23,8 @@ from app.services.corte_service import (
     actualizar_trabajo_existente,
     mapear_trabajo_a_response
 )
-from app.services.export_service import generar_contenido_txt
+from app.services.export_service import generar_contenido_txt, generar_excel
+from fastapi.responses import PlainTextResponse, StreamingResponse
 
 router = APIRouter(
     prefix="/api/trabajos",
@@ -31,16 +32,6 @@ router = APIRouter(
 )
 
 # 1. PASO 1 DE LA CREACIÓN: Analiza las fotos y devuelve el borrador
-# @router.post("/analizar")
-# async def analizar_fotos(
-#     fotos: list[UploadFile],
-#     current_user: Usuario = Depends(get_current_user), # <--- Inyección de Usuario Autenticado
-#     db: AsyncSession = Depends(get_db)
-# ):
-#     if current_user.creditos_restantes <= 0:
-#         raise HTTPException(status_code=402, detail="Sin créditos suficientes.")
-    
-#     # Procesar fotos...
 @router.post("/analizar", response_model=ListaCortesIA)
 async def analizar_fotos_trabajo(
     fotos: list[UploadFile] = File(...),
@@ -139,6 +130,24 @@ async def exportar_trabajo_txt(id_trabajo: int, db: AsyncSession = Depends(get_d
         headers={"Content-Disposition": f"attachment; filename={nombre_archivo}"}
     )
 
+# 5b. EXPORTAR A EXCEL
+@router.get("/{id_trabajo}/exportar-excel")
+async def exportar_trabajo_excel(id_trabajo: int, db: AsyncSession = Depends(get_db)):
+    stmt = select(Trabajo).where(Trabajo.id == id_trabajo).options(selectinload(Trabajo.cortes))
+    result = await db.execute(stmt)
+    trabajo = result.scalar_one_or_none()
+
+    if not trabajo:
+        raise HTTPException(status_code=404, detail="Trabajo no encontrado")
+
+    excel_bytes = generar_excel(trabajo)
+    nombre_archivo = f"trabajo_{trabajo.id}_{trabajo.nombre.replace(' ', '_')}.xlsx"
+
+    return StreamingResponse(
+        excel_bytes,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+        headers={"Content-Disposition": f"attachment; filename={nombre_archivo}"}
+    )
 
 # 6. ELIMINAR TRABAJO
 @router.delete("/{id_trabajo}", status_code=status.HTTP_204_NO_CONTENT)

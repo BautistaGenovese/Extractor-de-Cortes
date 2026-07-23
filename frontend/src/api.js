@@ -74,6 +74,10 @@ export const apiService = {
         return `${API_BASE_URL}/trabajos/${idTrabajo}/exportar-txt`;
     },
 
+    getExportarExcelUrl: (idTrabajo) => {
+        return `${API_BASE_URL}/trabajos/${idTrabajo}/exportar-excel`;
+    },
+
     // 6. Actualizar trabajo existente (PUT)
     actualizarTrabajo: async (idTrabajo, nombreTrabajo, cortes) => {
         const payload = {
@@ -90,4 +94,9 @@ export const apiService = {
         return res.data;
     },
 
+    // 8. Chequear estado del motor/servidor
+    checkStatus: async () => {
+        const res = await api.get('/status');
+        return res.data;
+    },
 };

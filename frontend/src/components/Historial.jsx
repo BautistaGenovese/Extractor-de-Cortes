@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Folder, Download, Trash2, Edit3, Calendar, Search, Activity, Box } from 'lucide-react';
+import { Folder, FileText, FileSpreadsheet, Trash2, Edit3, Calendar, Search, Activity, Box } from 'lucide-react';
 import { apiService } from '../api';
 import { useToast } from './Toaster';
 
@@ -49,24 +49,7 @@ export default function Historial({ trabajos, onCargarParaEditar, onEliminarTrab
         </div>
 
         {/* Stats — vertical en mobile, horizontal en desktop */}
-        <div className="grid grid-cols-3 gap-2 md:gap-3 mb-6 md:mb-8">
-          {/* Material Optimizado */}
-          <div className="bg-emerald-500/10 dark:bg-emerald-500/5 p-3 rounded-xl border border-emerald-500/20
-                          flex flex-col items-center justify-center text-center gap-1.5
-                          md:flex-row md:items-center md:text-left md:gap-3 md:p-3">
-            <div className="w-8 h-8 bg-emerald-500/20 rounded-lg flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-              <Activity className="w-4 h-4" />
-            </div>
-            <div>
-              <p className="text-emerald-700/70 dark:text-emerald-400/70 text-[9px] font-semibold uppercase tracking-wider leading-tight">
-                Mat. Optim.
-              </p>
-              <p className="text-base font-bold text-emerald-700 dark:text-emerald-400 leading-tight">
-                124.5 m²
-              </p>
-            </div>
-          </div>
-
+        <div className="grid grid-cols-2 gap-2 md:gap-3 mb-6 md:mb-8">
           {/* Total de Piezas */}
           <div className="bg-indigo-500/10 dark:bg-indigo-500/5 p-3 rounded-xl border border-indigo-500/20
                           flex flex-col items-center justify-center text-center gap-1.5
@@ -142,20 +125,33 @@ export default function Historial({ trabajos, onCargarParaEditar, onEliminarTrab
 
                   <div className="h-px bg-stitch-border/30 w-full" />
 
-                  <div className="flex items-center justify-between">
-                    <a
-                      href={apiService.getExportarTxtUrl(t.id)}
-                      download
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toast(`Descargando "${t.nombre}.txt"...`, 'success');
-                      }}
-                      className="flex items-center gap-1.5 text-stitch-primary hover:bg-stitch-primary/10 px-3 py-2 rounded-xl transition-all text-[13px] font-medium border border-stitch-primary/20"
-                    >
-                      <Download className="w-[18px] h-[18px]" />
-                      Descargar .txt
-                    </a>
-                    <div className="flex items-center gap-1">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-3">
+                    <div className="flex flex-wrap gap-2">
+                      <a
+                        href={apiService.getExportarTxtUrl(t.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Exportar optimizador .txt"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-stitch-text-muted hover:text-stitch-primary hover:bg-stitch-primary/10 transition-all border border-stitch-border/50 hover:border-stitch-primary/30"
+                      >
+                        <FileText className="w-3.5 h-3.5" />
+                        <span>.txt</span>
+                      </a>
+                      
+                      <a
+                        href={apiService.getExportarExcelUrl(t.id)}
+                        target="_blank"
+                        rel="noreferrer"
+                        title="Exportar a Excel"
+                        onClick={(e) => e.stopPropagation()}
+                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-500/10 transition-all border border-stitch-border/50 hover:border-emerald-500/30"
+                      >
+                        <FileSpreadsheet className="w-3.5 h-3.5" />
+                        <span>Excel</span>
+                      </a>
+                    </div>
+                    <div className="flex items-center gap-1 justify-end">
                       <button
                         onClick={(e) => { e.stopPropagation(); onCargarParaEditar(t, false); }}
                         className="p-2.5 rounded-xl hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 transition-all"
