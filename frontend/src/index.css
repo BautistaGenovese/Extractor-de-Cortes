@@ -1,5 +1,5 @@
-@import "tailwindcss";
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import "tailwindcss";
 
 @variant dark (&:where(.dark, .dark *));
 
@@ -13,9 +13,9 @@
   --color-text-main: #191c1e;
   --color-text-muted: #52443c;
   --color-danger: #ba1a1a;
-  --color-secondary-container: #d9b5ff;
-  --color-on-secondary-container: #614283;
-  --color-lavender-accent: #EDE9FE;
+  --color-secondary-container: #f0e1d5;
+  --color-on-secondary-container: #4a2c16;
+  --color-lavender-accent: #fdf8f4;
 }
 
 .dark {
@@ -28,9 +28,9 @@
   --color-text-main: #e1e2e4;
   --color-text-muted: #d7c2b9;
   --color-danger: #ffb4ab;
-  --color-secondary-container: #4a2864;
-  --color-on-secondary-container: #d9b5ff;
-  --color-lavender-accent: #2a1f45;
+  --color-secondary-container: #4d2d18;
+  --color-on-secondary-container: #ffdcc6;
+  --color-lavender-accent: #2b1b11;
 }
 
 @theme {
@@ -73,9 +73,17 @@
   --text-label-sm--font-weight: 500;
 
   --animate-border-glow: border-glow 3s infinite ease-in-out;
+
   @keyframes border-glow {
-    0%, 100% { border-color: var(--color-stitch-border); }
-    50% { border-color: var(--color-stitch-primary); }
+
+    0%,
+    100% {
+      border-color: var(--color-stitch-border);
+    }
+
+    50% {
+      border-color: var(--color-stitch-primary);
+    }
   }
 }
 
@@ -91,6 +99,13 @@ body {
 }
 
 @keyframes toastSlideDown {
-  from { opacity: 0; transform: translateY(-12px) scale(0.96); }
-  to   { opacity: 1; transform: translateY(0)     scale(1); }
+  from {
+    opacity: 0;
+    transform: translateY(-12px) scale(0.96);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
 }

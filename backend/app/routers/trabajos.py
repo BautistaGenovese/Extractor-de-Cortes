@@ -8,7 +8,8 @@ from PIL import Image
 import io
 
 from app.database import get_db
-from app.models import Trabajo
+from app.models import Trabajo, Usuario
+from app.dependencies.auth import get_current_user
 from app.schemas import (
     TrabajoResponse, 
     ListaCortesIA, 
@@ -30,10 +31,20 @@ router = APIRouter(
 )
 
 # 1. PASO 1 DE LA CREACIÓN: Analiza las fotos y devuelve el borrador
+# @router.post("/analizar")
+# async def analizar_fotos(
+#     fotos: list[UploadFile],
+#     current_user: Usuario = Depends(get_current_user), # <--- Inyección de Usuario Autenticado
+#     db: AsyncSession = Depends(get_db)
+# ):
+#     if current_user.creditos_restantes <= 0:
+#         raise HTTPException(status_code=402, detail="Sin créditos suficientes.")
+    
+#     # Procesar fotos...
 @router.post("/analizar", response_model=ListaCortesIA)
 async def analizar_fotos_trabajo(
-    id_usuario: Annotated[str, Form()],
     fotos: list[UploadFile] = File(...),
+    current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
     if len(fotos) < 1 or len(fotos) > 4:
@@ -43,7 +54,7 @@ async def analizar_fotos_trabajo(
         )
 
     # Verifica si tiene crédito disponible antes de consumir Gemini
-    await verificar_creditos_usuario(db=db, id_usuario=id_usuario)
+    await verificar_creditos_usuario(db=db, id_usuario=current_user.id)
 
     imagenes_pil: list[Image.Image] = []
     for foto in fotos:
@@ -66,9 +77,10 @@ async def analizar_fotos_trabajo(
 @router.post("/guardar", response_model=TrabajoResponse, status_code=status.HTTP_201_CREATED)
 async def guardar_trabajo(
     payload: TrabajoGuardarRequest,
+    current_user: Usuario = Depends(get_current_user),
     db: AsyncSession = Depends(get_db)
 ):
-    usuario = await verificar_creditos_usuario(db=db, id_usuario=payload.id_usuario)
+    usuario = await verificar_creditos_usuario(db=db, id_usuario=current_user.id)
 
     nuevo_trabajo = await guardar_trabajo_confirmado(
         db=db,

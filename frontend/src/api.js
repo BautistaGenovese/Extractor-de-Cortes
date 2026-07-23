@@ -6,36 +6,56 @@ export const api = axios.create({
     baseURL: API_BASE_URL,
 });
 
+let interceptorId = null;
+
+// Función para inyectar el getter del token desde React
+export const setAuthTokenGetter = (getToken) => {
+    if (interceptorId !== null) {
+        api.interceptors.request.eject(interceptorId);
+    }
+    interceptorId = api.interceptors.request.use(async (config) => {
+        try {
+            const token = await getToken();
+            if (token) {
+                config.headers.Authorization = `Bearer ${token}`;
+            }
+        } catch (e) {
+            console.error("Error obteniendo token:", e);
+        }
+        return config;
+    });
+};
+
 // Servicio para interactuar con la API
 export const apiService = {
+    // 0. Sincronizar datos de Clerk a la DB
+    syncUsuario: async (datos) => {
+        const res = await api.post(`/usuarios/sync`, datos);
+        return res.data;
+    },
+
     // 1. Obtener perfil del usuario (créditos)
-    getUsuario: async (idUsuario) => {
-        const res = await api.get(`/usuarios/${idUsuario}`);
+    getUsuario: async () => {
+        const res = await api.get(`/usuarios/me`);
         return res.data;
     },
 
     // 2. Analizar fotos de cortes (Paso 1: Solo lectura, NO descuenta crédito)
-    analizarFotos: async (idUsuario, archivosFotos) => {
+    analizarFotos: async (archivosFotos) => {
         const formData = new FormData();
-        formData.append('id_usuario', idUsuario);
 
         // Adjuntamos cada foto al FormData
         archivosFotos.forEach((file) => {
             formData.append('fotos', file);
         });
 
-        const res = await api.post('/trabajos/analizar', formData, {
-            headers: {
-                'Content-Type': 'multipart/form-data',
-            },
-        });
+        const res = await api.post('/trabajos/analizar', formData);
         return res.data; // Devuelve { cortes: [...] }
     },
 
     // 3. Guardar el trabajo confirmado (Paso 2: Persiste en DB y resta 1 crédito)
-    guardarTrabajo: async (idUsuario, nombreTrabajo, cortes) => {
+    guardarTrabajo: async (nombreTrabajo, cortes) => {
         const payload = {
-            id_usuario: idUsuario,
             nombre_trabajo: nombreTrabajo,
             cortes: cortes,
         };
@@ -44,8 +64,8 @@ export const apiService = {
     },
 
     // 4. Listar historial de trabajos del usuario
-    getTrabajosUsuario: async (idUsuario) => {
-        const res = await api.get(`/usuarios/${idUsuario}/trabajos`);
+    getTrabajosUsuario: async () => {
+        const res = await api.get(`/usuarios/me/trabajos`);
         return res.data;
     },
 

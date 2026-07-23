@@ -6,8 +6,9 @@ from typing import List
 
 from app.database import get_db
 from app.models import Usuario, Trabajo
-from app.schemas import UsuarioCreate, UsuarioResponse, TrabajoResponse
+from app.schemas import UsuarioCreate, UsuarioSync, UsuarioResponse, TrabajoResponse
 from app.services.corte_service import mapear_trabajo_a_response
+from app.dependencies.auth import get_current_user
 
 router = APIRouter(
     prefix="/api/usuarios",
@@ -44,25 +45,35 @@ async def crear_usuario(
     return nuevo_usuario
 
 
-@router.get("/{id_usuario}", response_model=UsuarioResponse)
-async def obtener_usuario(id_usuario: str, db: AsyncSession = Depends(get_db)):
-    """Obtiene los datos de perfil y créditos de un usuario."""
-    stmt = select(Usuario).where(Usuario.id == id_usuario)
-    res = await db.execute(stmt)
-    usuario = res.scalar_one_or_none()
+@router.post("/sync", response_model=UsuarioResponse)
+async def sincronizar_usuario(
+    datos: UsuarioSync,
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Sincroniza el nombre y el correo desde Clerk hacia la DB local."""
+    current_user.nombre = datos.nombre
+    current_user.email = datos.email
+    await db.commit()
+    await db.refresh(current_user)
+    return current_user
 
-    if not usuario:
-        raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
-    return usuario
+@router.get("/me", response_model=UsuarioResponse)
+async def obtener_usuario(current_user: Usuario = Depends(get_current_user)):
+    """Obtiene los datos de perfil y créditos del usuario autenticado."""
+    return current_user
 
 
-@router.get("/{id_usuario}/trabajos", response_model=List[TrabajoResponse])
-async def listar_trabajos_usuario(id_usuario: str, db: AsyncSession = Depends(get_db)):
-    """Lista todos los trabajos procesados por un usuario específico."""
+@router.get("/me/trabajos", response_model=List[TrabajoResponse])
+async def listar_trabajos_usuario(
+    current_user: Usuario = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db)
+):
+    """Lista todos los trabajos procesados por el usuario autenticado."""
     stmt = (
         select(Trabajo)
-        .where(Trabajo.id_usuario == id_usuario)
+        .where(Trabajo.id_usuario == current_user.id)
         .options(selectinload(Trabajo.cortes))
         .order_by(Trabajo.fecha.desc())
     )

@@ -1,9 +1,9 @@
 import { PencilRuler, Coins, Sun, Moon } from 'lucide-react';
+import { SignedIn, SignedOut, SignInButton, UserButton, useUser } from "@clerk/clerk-react";
 
 export default function Navbar({ usuario, isDarkMode, toggleTheme }) {
-  const avatarColors = ['bg-orange-500', 'bg-indigo-500', 'bg-emerald-500', 'bg-rose-500', 'bg-sky-500'];
-  const colorIndex = usuario?.nombre ? usuario.nombre.length % avatarColors.length : 0;
-  const initialClass = avatarColors[colorIndex];
+  // Ya no necesitamos el avatar falso porque usaremos el de Clerk
+  const { user } = useUser();
 
   return (
     <header className="bg-stitch-surface/80 backdrop-blur-xl sticky top-0 z-50 shadow-sm border-b border-stitch-border/30 transition-colors duration-300">
@@ -31,27 +31,47 @@ export default function Navbar({ usuario, isDarkMode, toggleTheme }) {
             }
           </button>
 
-          {/* Info de usuario */}
-          {usuario && (
-            <div className="flex items-center gap-2 md:gap-3 pl-3 md:pl-4 border-l border-stitch-border">
-              {/* Nombre + rol (solo sm+) */}
-              <div className="text-right hidden sm:block">
-                <p className="text-sm font-bold text-stitch-text leading-tight">{usuario.nombre}</p>
-                <p className="text-xs text-stitch-text-muted">Carpintero</p>
-              </div>
+          {/* Autenticación y Perfil */}
+          <div className="flex items-center gap-2 md:gap-3 pl-3 md:pl-4 border-l border-stitch-border">
+            
+            <SignedOut>
+              <SignInButton mode="modal">
+                <button className="bg-stitch-primary hover:brightness-110 text-stitch-on-primary font-bold px-4 py-2 rounded-xl text-sm transition-all shadow-sm">
+                  Iniciar Sesión
+                </button>
+              </SignInButton>
+            </SignedOut>
 
-              {/* Avatar */}
-              <div className={`w-8 h-8 md:w-10 md:h-10 rounded-full ${initialClass} flex items-center justify-center text-white font-bold text-sm md:text-lg shadow-sm border border-white/20 dark:border-black/20 shrink-0`}>
-                {usuario.nombre.charAt(0).toUpperCase()}
-              </div>
+            <SignedIn>
+              {/* Información adicional del usuario de la BD (ej: Créditos) */}
+              {usuario && (
+                <div className="flex items-center gap-1 md:gap-1.5 bg-stitch-primary/10 text-stitch-primary px-2 md:px-3 py-1 md:py-1.5 rounded-lg border border-stitch-primary/20 mr-1 md:mr-2">
+                  <Coins className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0" />
+                  <span className="font-bold text-xs md:text-sm whitespace-nowrap">
+                    {usuario.creditos_restantes} <span className="hidden sm:inline">créditos</span>
+                  </span>
+                </div>
+              )}
 
-              {/* Créditos */}
-              <div className="flex items-center gap-1 md:gap-1.5 bg-stitch-primary/10 text-stitch-primary px-2 md:px-3 py-1 md:py-1.5 rounded-lg border border-stitch-primary/20">
-                <Coins className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0" />
-                <span className="font-bold text-xs md:text-sm whitespace-nowrap">{usuario.creditos_restantes} <span className="hidden sm:inline">créditos</span></span>
-              </div>
-            </div>
-          )}
+              {/* Nombre y rol */}
+              {user && (
+                <div className="text-right hidden sm:block mr-1 md:mr-2">
+                  <p className="text-sm font-bold text-stitch-text leading-tight">{user.fullName || user.firstName || 'Usuario'}</p>
+                  <p className="text-xs text-stitch-text-muted">Carpintero</p>
+                </div>
+              )}
+              
+              {/* Botón de Perfil de Clerk */}
+              <UserButton 
+                appearance={{ 
+                  elements: { 
+                    userButtonAvatarBox: "w-8 h-8 md:w-10 md:h-10 border border-black/10 dark:border-white/10 shadow-sm" 
+                  } 
+                }} 
+              />
+            </SignedIn>
+            
+          </div>
         </div>
       </div>
     </header>

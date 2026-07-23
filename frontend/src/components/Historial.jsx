@@ -15,7 +15,7 @@ export default function Historial({ trabajos, onCargarParaEditar, onEliminarTrab
 
   if (!trabajos || trabajos.length === 0) {
     return (
-      <div className="bg-stitch-surface rounded-2xl p-8 border border-stitch-border shadow-xl max-w-4xl mx-auto my-6 md:my-8 text-center text-stitch-text-muted transition-colors duration-300">
+      <div className="bg-stitch-surface rounded-2xl p-8 border border-stitch-border shadow-xl max-w-[820px] mx-auto my-6 md:my-8 text-center text-stitch-text-muted transition-colors duration-300">
         <Folder className="w-12 h-12 mx-auto mb-3 text-stitch-text-muted/50" />
         <p className="text-base font-medium">Aún no tienes trabajos guardados.</p>
         <p className="text-xs text-stitch-text-muted/70 mt-1">
@@ -27,7 +27,7 @@ export default function Historial({ trabajos, onCargarParaEditar, onEliminarTrab
 
   return (
     <>
-      <section className="bg-stitch-surface rounded-2xl p-4 md:p-6 border border-stitch-border shadow-xl max-w-3xl mx-auto mt-4 md:mt-8 mb-10 text-stitch-text transition-colors duration-300">
+      <section className="bg-stitch-surface rounded-2xl p-4 md:p-6 border border-stitch-border shadow-xl max-w-[820px] mx-auto mt-4 md:mt-8 mb-10 text-stitch-text transition-colors duration-300">
 
         {/* Header con título y buscador */}
         <div className="flex flex-col gap-3 mb-5 md:mb-6">
@@ -158,7 +158,7 @@ export default function Historial({ trabajos, onCargarParaEditar, onEliminarTrab
                     <div className="flex items-center gap-1">
                       <button
                         onClick={(e) => { e.stopPropagation(); onCargarParaEditar(t, false); }}
-                        className="p-2.5 rounded-xl hover:bg-purple-500/10 text-purple-600 dark:text-purple-400 transition-all"
+                        className="p-2.5 rounded-xl hover:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 transition-all"
                         title="Editar"
                       >
                         <Edit3 className="w-4 h-4 md:w-5 md:h-5" />

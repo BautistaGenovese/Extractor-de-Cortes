@@ -3,12 +3,11 @@ import Navbar from './components/Navbar';
 import Dropzone from './components/Dropzone';
 import TablaCortes from './components/TablaCortes';
 import Historial from './components/Historial';
-import { apiService } from './api';
+import { apiService, setAuthTokenGetter } from './api';
 import { UploadCloud, Folder, ArrowLeft } from 'lucide-react';
 import { useToast } from './components/Toaster';
 import { useConfirm } from './components/ConfirmModal';
-
-const ID_USUARIO_PRUEBA = '1fcbdbdc-4ecf-4a47-8008-5758bd8a3c31';
+import { useAuth, useUser } from '@clerk/clerk-react';
 
 export default function App() {
   const [isDarkMode, setIsDarkMode] = useState(() => {
@@ -50,12 +49,15 @@ export default function App() {
   const [trabajoEnEdicionId, setTrabajoEnEdicionId] = useState(null);
   const [trabajos, setTrabajos] = useState([]);
 
+  const { getToken, isLoaded, isSignedIn } = useAuth();
+  const { user } = useUser();
+
   const cargarDatos = async () => {
     try {
-      const uData = await apiService.getUsuario(ID_USUARIO_PRUEBA);
+      const uData = await apiService.getUsuario();
       setUsuario(uData);
 
-      const tData = await apiService.getTrabajosUsuario(ID_USUARIO_PRUEBA);
+      const tData = await apiService.getTrabajosUsuario();
       setTrabajos(tData);
     } catch (err) {
       console.error('Error cargando datos iniciales:', err);
@@ -63,16 +65,40 @@ export default function App() {
   };
 
   useEffect(() => {
-    cargarDatos();
-  }, []);
+    const initAuth = async () => {
+      if (isSignedIn) {
+        setAuthTokenGetter(getToken);
+        
+        if (user) {
+          try {
+            await apiService.syncUsuario({
+              nombre: user.fullName || user.firstName || 'Usuario',
+              email: user.primaryEmailAddress?.emailAddress || null,
+            });
+          } catch (e) {
+            console.error('Error sincronizando usuario:', e);
+          }
+        }
 
-  const handleAnalizar = async (nombreTrabajo, fotos) => {
+        cargarDatos();
+      } else {
+        setAuthTokenGetter(async () => null);
+        setUsuario(null);
+        setTrabajos([]);
+      }
+    };
+    if (isLoaded) {
+      initAuth();
+    }
+  }, [isLoaded, isSignedIn, getToken, user]);
+
+  const handleAnalizar = async (fotos) => {
     setCargandoAnalisis(true);
     try {
-      const data = await apiService.analizarFotos(ID_USUARIO_PRUEBA, fotos);
+      const data = await apiService.analizarFotos(fotos);
       setTrabajoEnEdicionId(null);
       setBorradorTrabajo({
-        nombre: nombreTrabajo,
+        nombre: 'Trabajo sin nombre',
         cortes: data.cortes,
       });
       setSoloLectura(false);
@@ -90,7 +116,7 @@ export default function App() {
         await apiService.actualizarTrabajo(trabajoEnEdicionId, nuevoNombre, cortesEditados);
         toast('¡Trabajo actualizado exitosamente!', 'success');
       } else {
-        await apiService.guardarTrabajo(ID_USUARIO_PRUEBA, nuevoNombre, cortesEditados);
+        await apiService.guardarTrabajo(nuevoNombre, cortesEditados);
         toast('¡Trabajo guardado exitosamente!', 'success');
       }
 
@@ -185,16 +211,16 @@ export default function App() {
         {/* Botón de volver si estamos en la vista de edición de la pestaña correspondiente */}
         {((pestanaActiva === 'nuevo' && borradorTrabajo && !trabajoEnEdicionId) ||
           (pestanaActiva === 'historial' && borradorTrabajo && trabajoEnEdicionId)) && (
-          <div className="max-w-6xl mx-auto mb-4">
-            <button
-              onClick={handleCancelarEdicion}
-              className="text-xs text-stitch-text-muted hover:text-stitch-primary flex items-center gap-1.5 transition-colors"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              Volver atrás / Cancelar
-            </button>
-          </div>
-        )}
+            <div className="max-w-6xl mx-auto mb-4">
+              <button
+                onClick={handleCancelarEdicion}
+                className="text-xs text-stitch-text-muted hover:text-stitch-primary flex items-center gap-1.5 transition-colors"
+              >
+                <ArrowLeft className="w-4 h-4" />
+                Volver atrás / Cancelar
+              </button>
+            </div>
+          )}
 
         {/* Renderizado condicional por Pestaña */}
         {pestanaActiva === 'nuevo' ? (
@@ -215,8 +241,6 @@ export default function App() {
               cargando={cargandoAnalisis}
               archivos={archivosDraft}
               setArchivos={setArchivosDraft}
-              nombreTrabajo={nombreDraft}
-              setNombreTrabajo={setNombreDraft}
             />
           )
         ) : (

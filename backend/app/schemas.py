@@ -23,6 +23,10 @@ class UsuarioCreate(BaseModel):
     telefono: Optional[str] = None
     email: Optional[str] = None
 
+class UsuarioSync(BaseModel):
+    nombre: str
+    email: Optional[str] = None
+
 class CorteCreate(BaseModel):
     cantidad: int
     largo_mm: int
@@ -38,7 +42,6 @@ class TrabajoCreate(BaseModel):
 
 class TrabajoGuardarRequest(BaseModel):
     """Payload para guardar el borrador confirmado desde el Frontend"""
-    id_usuario: str
     nombre_trabajo: str = "Trabajo sin nombre"
     cortes: List[CorteCreate]
 
