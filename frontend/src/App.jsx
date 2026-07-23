@@ -119,12 +119,18 @@ export default function App() {
   const handleGuardar = async (nuevoNombre, cortesEditados) => {
     setCargandoGuardar(true);
     try {
+      let isNewJob = false;
+      let savedJobId = null;
+
       if (trabajoEnEdicionId) {
         await apiService.actualizarTrabajo(trabajoEnEdicionId, nuevoNombre, cortesEditados);
         toast('¡Trabajo actualizado exitosamente!', 'success');
+        savedJobId = trabajoEnEdicionId;
       } else {
-        await apiService.guardarTrabajo(nuevoNombre, cortesEditados);
+        const res = await apiService.guardarTrabajo(nuevoNombre, cortesEditados);
         toast('¡Trabajo guardado exitosamente!', 'success');
+        savedJobId = res.id;
+        isNewJob = true;
       }
 
       setBorradorTrabajo(null);
@@ -132,7 +138,12 @@ export default function App() {
       setNombreDraft('');
       setArchivosDraft([]);
       await cargarDatos();
-      navigate('/historial');
+      
+      if (isNewJob && savedJobId) {
+        navigate(`/trabajo/${savedJobId}`);
+      } else {
+        navigate('/historial');
+      }
     } catch (err) {
       console.error('Error al guardar:', err);
       toast('Ocurrió un error al intentar guardar el trabajo.', 'error', 5000);

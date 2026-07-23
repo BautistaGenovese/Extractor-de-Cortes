@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, CheckCircle, Edit2, AlertCircle, Copy, Download, Check, Loader2, Activity, Scissors, FileText, FileSpreadsheet } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Edit2, AlertCircle, Copy, Download, Check, Loader2, Activity, Scissors, FileText, FileSpreadsheet, Info } from 'lucide-react';
 import { useToast } from './Toaster';
 import { apiService } from '../api';
 
@@ -676,9 +676,12 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
             </tbody>
           </table>
 
-          <div className="px-6 py-4 bg-stitch-surface-alt text-stitch-text-muted text-xs flex justify-between items-center border-t border-stitch-border/30">
+          <div className="px-6 py-4 bg-stitch-surface-alt text-stitch-text-muted text-xs flex flex-col sm:flex-row justify-between items-center gap-3 border-t border-stitch-border/30">
             <span>Mostrando {cortes.length} pieza{cortes.length !== 1 ? 's' : ''} ingresada{cortes.length !== 1 ? 's' : ''}</span>
-            <span className="flex items-center gap-1"><AlertCircle className="w-3.5 h-3.5" /> Los cambios se validan antes de guardar</span>
+            <span className="flex items-center text-center sm:text-right gap-1.5 opacity-80">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              La IA puede cometer errores. Por favor, verifica y valida las medidas antes de guardar.
+            </span>
           </div>
         </div>
       </div>
@@ -701,45 +704,41 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
                 Agregar Pieza
               </button>
             )}
-            {soloLectura && (
-              <>
-                <button
-                  onClick={handleCopiarTxt}
-                  className={`flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border transition-all text-xs font-bold ${copiado
-                    ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 dark:border-emerald-500/20'
-                    : 'bg-stitch-surface-alt text-stitch-text border-stitch-border'
-                    }`}
-                >
-                  {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  {copiado ? 'Copiado' : 'Copiar'}
-                </button>
-                <button
-                  onClick={handleDescargarTxt}
-                  className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-stitch-text-muted hover:text-stitch-primary hover:bg-stitch-primary/10 transition-all border border-stitch-border/50 hover:border-stitch-primary/30"
-                >
-                  <FileText className="w-4 h-4" />
-                  <span>.TXT</span>
-                </button>
-                {jobId ? (
-                  <a
-                    href={apiService.getExportarExcelUrl(jobId)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all border border-stitch-border/50 hover:border-emerald-500/30"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    <span>EXCEL</span>
-                  </a>
-                ) : (
-                  <button
-                    onClick={handleDescargarExcel}
-                    className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600/50 dark:text-emerald-500/50 transition-all border border-stitch-border/50 cursor-not-allowed"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    <span>EXCEL</span>
-                  </button>
-                )}
-              </>
+            <button
+              onClick={handleCopiarTxt}
+              className={`flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border transition-all text-xs font-bold ${copiado
+                ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 dark:border-emerald-500/20'
+                : 'bg-stitch-surface-alt text-stitch-text border-stitch-border'
+                }`}
+            >
+              {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+              {copiado ? 'Copiado' : 'Copiar'}
+            </button>
+            <button
+              onClick={handleDescargarTxt}
+              className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-stitch-text-muted hover:text-stitch-primary hover:bg-stitch-primary/10 transition-all border border-stitch-border/50 hover:border-stitch-primary/30"
+            >
+              <FileText className="w-4 h-4" />
+              <span>.TXT</span>
+            </button>
+            {jobId ? (
+              <a
+                href={apiService.getExportarExcelUrl(jobId)}
+                target="_blank"
+                rel="noreferrer"
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all border border-stitch-border/50 hover:border-emerald-500/30"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>EXCEL</span>
+              </a>
+            ) : (
+              <button
+                onClick={handleDescargarExcel}
+                className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600/50 dark:text-emerald-500/50 transition-all border border-stitch-border/50 cursor-not-allowed"
+              >
+                <FileSpreadsheet className="w-4 h-4" />
+                <span>EXCEL</span>
+              </button>
             )}
           </div>
 
@@ -780,46 +779,44 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
                 <span>Agregar Pieza</span>
               </button>
             )}
-            {soloLectura && (
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={handleCopiarTxt}
-                  className={`flex items-center gap-2 px-3.5 py-2.5 hover:brightness-95 rounded-xl transition-all border ${copiado
-                    ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 dark:border-emerald-500/20'
-                    : 'bg-stitch-surface-alt text-stitch-text border-stitch-border'
-                    }`}
+            <div className="flex items-center gap-2">
+              <button
+                onClick={handleCopiarTxt}
+                className={`flex items-center gap-2 px-3.5 py-2.5 hover:brightness-95 rounded-xl transition-all border ${copiado
+                  ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 dark:border-emerald-500/20'
+                  : 'bg-stitch-surface-alt text-stitch-text border-stitch-border'
+                  }`}
+              >
+                {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span className="text-xs font-bold">{copiado ? '¡Copiado!' : 'Copiar'}</span>
+              </button>
+              <button
+                onClick={handleDescargarTxt}
+                className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-stitch-text-muted hover:text-stitch-primary hover:bg-stitch-primary/10 transition-all border border-stitch-border/50 hover:border-stitch-primary/30"
+              >
+                <FileText className="w-4 h-4" />
+                <span>.TXT</span>
+              </button>
+              {jobId ? (
+                <a
+                  href={apiService.getExportarExcelUrl(jobId)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all border border-stitch-border/50 hover:border-emerald-500/30"
                 >
-                  {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-                  <span className="text-xs font-bold">{copiado ? '¡Copiado!' : 'Copiar'}</span>
-                </button>
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>EXCEL</span>
+                </a>
+              ) : (
                 <button
-                  onClick={handleDescargarTxt}
-                  className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-stitch-text-muted hover:text-stitch-primary hover:bg-stitch-primary/10 transition-all border border-stitch-border/50 hover:border-stitch-primary/30"
+                  onClick={handleDescargarExcel}
+                  className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600/50 dark:text-emerald-500/50 transition-all border border-stitch-border/50 cursor-not-allowed"
                 >
-                  <FileText className="w-4 h-4" />
-                  <span>.TXT</span>
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>EXCEL</span>
                 </button>
-                {jobId ? (
-                  <a
-                    href={apiService.getExportarExcelUrl(jobId)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all border border-stitch-border/50 hover:border-emerald-500/30"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    <span>EXCEL</span>
-                  </a>
-                ) : (
-                  <button
-                    onClick={handleDescargarExcel}
-                    className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600/50 dark:text-emerald-500/50 transition-all border border-stitch-border/50 cursor-not-allowed"
-                  >
-                    <FileSpreadsheet className="w-4 h-4" />
-                    <span>EXCEL</span>
-                  </button>
-                )}
-              </div>
-            )}
+              )}
+            </div>
           </div>
 
           <div className="flex items-center gap-4">

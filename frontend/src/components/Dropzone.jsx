@@ -157,6 +157,13 @@ export default function Dropzone({ onAnalizar, cargando, archivos, setArchivos }
           </div>
         </div>
 
+        {/* Warning IA */}
+        <div className="mt-6 flex justify-center">
+          <p className="text-[11px] text-stitch-text-muted/70 flex items-center gap-1.5 text-center">
+            <Info className="w-3.5 h-3.5 shrink-0" />
+            La IA puede cometer errores. Por favor, verifica siempre los resultados antes de cortar.
+          </p>
+        </div>
       </form>
     </div>
   );
