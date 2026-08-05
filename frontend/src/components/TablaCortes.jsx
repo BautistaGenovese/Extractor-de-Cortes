@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Plus, Trash2, CheckCircle, Edit2, AlertCircle, Copy, Download, Check, Loader2, Activity, Scissors, FileText, FileSpreadsheet, Info } from 'lucide-react';
+import { Plus, Trash2, CheckCircle, Edit2, AlertCircle, Copy, Download, Check, Loader2, Activity, Scissors, FileText, FileSpreadsheet, Info, RotateCcwSquare, ChevronDown } from 'lucide-react';
 import { useToast } from './Toaster';
 import { apiService } from '../api';
 
@@ -36,8 +36,9 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
   const [nombreTrabajo, setNombreTrabajo] = useState(nombreTrabajoInicial || 'Trabajo sin nombre');
   const [intentosGuardado, setIntentosGuardado] = useState(false);
   const [copiado, setCopiado] = useState(false);
-  // Set de índices con el panel de edición expandido (solo mobile)
-  const [expandedRows, setExpandedRows] = useState(() => new Set());
+  const [corteAgregado, setCorteAgregado] = useState(false);
+  // Activacion del panel de edición expandido (solo mobile)
+  const [isExpanded, setExpandedRow] = useState();
 
   // Normaliza un corte a tipos canónicos para poder comparar
   const normalizeCorte = (c) => ({
@@ -65,15 +66,6 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
     return normActual !== normInicial;
   };
 
-  const toggleRow = (idx) => {
-    setExpandedRows(prev => {
-      const next = new Set(prev);
-      if (next.has(idx)) next.delete(idx);
-      else next.add(idx);
-      return next;
-    });
-  };
-
   const handleChange = (index, field, value) => {
     const nuevosCortes = [...cortes];
     nuevosCortes[index][field] = value;
@@ -81,10 +73,18 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
   };
 
   const agregarFila = () => {
+    setCorteAgregado(true);
     const newIdx = cortes.length;
     setCortes([...cortes, { cantidad: '', largo_mm: '', ancho_mm: '', descripcion: '', puede_rotar: true, tapacanto_largo: 0, tapacanto_ancho: 0 }]);
     // Auto-expandir la nueva card en mobile
-    setExpandedRows(prev => new Set([...prev, newIdx]));
+    setExpandedRow(newIdx);
+    setTimeout(() => {
+      window.scrollTo({
+        top: document.body.scrollHeight,
+        behavior: 'smooth'
+      });
+    }, 100);
+    setTimeout(() => setCorteAgregado(false), 2000);
   };
 
   const eliminarFila = (index) => {
@@ -93,15 +93,10 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
       return;
     }
     setCortes(cortes.filter((_, i) => i !== index));
-    // Reajustar índices del set de expandidos
-    setExpandedRows(prev => {
-      const next = new Set();
-      prev.forEach(i => {
-        if (i < index) next.add(i);
-        else if (i > index) next.add(i - 1);
-      });
-      return next;
-    });
+    // Reajustar el expandido
+    if (isExpanded === index) {
+      setExpandedRow(null);
+    }
   };
 
   const obtenerCamposFaltantes = (corte) => {
@@ -349,6 +344,10 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
           </div>
         )}
 
+        <div className="px-2 py-2 text-stitch-text-muted text-xs flex items-center justify-between">
+          <span className="flex items-center gap-1"><AlertCircle className="w-3 h-3" /> Toca cada pieza para ver mas detalles</span>
+        </div>
+
         {/* ═══════════════════════════════════════════════
             VISTA MOBILE — Cards colapsables por pieza
             ═══════════════════════════════════════════════ */}
@@ -357,15 +356,24 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
             const faltantes = obtenerCamposFaltantes(c);
             const erroresVal = obtenerErrores(c);
             const tieneError = intentosGuardado && (faltantes.length > 0 || erroresVal.length > 0);
-            const isExpanded = expandedRows.has(idx);
 
             return (
               <div
                 key={idx}
+                // onClick={() => toggleRow(idx)}
+                onClick={() => {
+                  if (isExpanded !== idx) {
+                    setExpandedRow(idx)
+                  } else {
+                    setExpandedRow(null);
+                  }
+                }}
                 className={`rounded-2xl border overflow-hidden transition-all duration-200 ${tieneError
-                  ? 'border-rose-400/70 card-error'
-                  : 'border-stitch-border/50'
-                  } bg-stitch-surface-alt/40`}
+                  ? 'border-rose-400/70 card-error bg-stitch-surface-alt/40'
+                  : isExpanded === idx
+                    ? 'border-stitch-primary/50 bg-stitch-surface shadow-sm'
+                    : 'border-stitch-border/50 bg-stitch-surface-alt/40'
+                  }`}
               >
                 {/* ── Card Header (siempre visible) ── */}
                 <div className="flex items-center gap-3 px-4 py-3">
@@ -398,46 +406,44 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
                         )}
                       </div>
                     ) : (
-                      <p className="text-xs text-stitch-text-muted mt-0.5">
-                        {c.cantidad ? `${c.cantidad} ud` : '— ud'} · {c.largo_mm || '—'} × {c.ancho_mm || '—'} mm
-                      </p>
+                      <div className="text-xs text-stitch-text-muted mt-0.5 z-10">
+                        <p className='inline'>{c.cantidad ? `${c.cantidad} ud` : '— ud'} · </p>
+                        <p className={`inline ${c.tapacanto_largo !== 0 ? 'underline underline-offset-2 decoration-1' : ''} ${c.tapacanto_largo > 1 ? 'decoration-double' : ''}`}>{c.largo_mm || '—'}</p>
+                        <p className='inline'> × </p>
+                        <p className={`inline ${c.tapacanto_ancho !== 0 ? 'underline underline-offset-2 decoration-1' : ''} ${c.tapacanto_ancho > 1 ? 'decoration-double' : ''}`}>{c.ancho_mm || '—'}</p>
+                        <p className='inline'> mm</p>
+                        {c.puede_rotar && (
+                          <p className='inline'> · <RotateCcwSquare className='inline w-3 h-3' /></p>
+                        )}
+                      </div>
                     )}
                   </div>
 
                   {/* Botones de acción */}
-                  {!soloLectura ? (
-                    <div className="flex items-center gap-1.5 shrink-0">
+                  <div className="flex items-center gap-2">
+                    <ChevronDown
+                      className={`w-5 h-5 text-stitch-text-muted transition-transform duration-300 opacity-50 ${isExpanded === idx ? 'rotate-180 text-stitch-primary' : ''
+                        }`}
+                    />
+                    {!soloLectura && (
                       <button
-                        onClick={() => toggleRow(idx)}
-                        className={`p-2 rounded-xl transition-all duration-150 ${isExpanded
-                          ? 'bg-stitch-primary text-stitch-on-primary shadow-md'
-                          : 'bg-stitch-surface text-stitch-text-muted hover:text-stitch-primary border border-stitch-border/60'
-                          }`}
-                        title={isExpanded ? 'Cerrar' : 'Editar pieza'}
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => eliminarFila(idx)}
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          eliminarFila(idx);
+                        }}
                         className="p-2 rounded-xl bg-stitch-surface text-stitch-text-muted hover:text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 border border-stitch-border/60 transition-all"
                         title="Eliminar pieza"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={() => toggleRow(idx)}
-                      className="shrink-0 text-xs text-stitch-text-muted bg-stitch-surface px-2.5 py-1.5 rounded-lg border border-stitch-border/40 transition-all"
-                    >
-                      {isExpanded ? 'Cerrar' : 'Ver'}
-                    </button>
-                  )}
+                    )}
+                  </div>
                 </div>
 
                 {/* ── Panel de edición (expandible) ── */}
-                {isExpanded && (
-                  <div className="card-fields-enter px-4 pb-4 pt-3 border-t border-stitch-border/30 space-y-3 bg-stitch-surface/60">
+                {/* {isExpanded && ( */}
+                {isExpanded === idx && (
+                  <div className="card-fields-enter px-4 pb-4 pt-3 border-t border-stitch-border/30 space-y-3 bg-stitch-surface/60" onClick={(e) => e.stopPropagation()}>
                     {/* Cantidad · Largo · Ancho */}
                     <div className="grid grid-cols-3 gap-2">
                       <div>
@@ -518,16 +524,14 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
                     </div>
 
                     {/* Puede Rotar */}
-                    <label className="flex items-center gap-3 cursor-pointer select-none py-0.5">
-                      <input
-                        type="checkbox"
-                        checked={c.puede_rotar ?? true}
-                        onChange={(e) => handleChange(idx, 'puede_rotar', e.target.checked)}
+                    <div>
+                      <button
+                        className={`transition-all duration-150 flex items-center gap-2 pl-3 pr-4 py-2 rounded rounded-xl text-sm font-bold border disabled:opacity-80 ${c.puede_rotar ? 'bg-stitch-primary text-stitch-on-primary shadow-md border-stitch-primary'
+                          : 'bg-stitch-surface text-stitch-text-muted hover:text-stitch-primary border-stitch-border/60'}`}
+                        onClick={(e) => handleChange(idx, 'puede_rotar', !c.puede_rotar)}
                         disabled={soloLectura}
-                        className="w-5 h-5 accent-stitch-primary rounded cursor-pointer disabled:opacity-70"
-                      />
-                      <span className="text-sm font-medium text-stitch-text">Puede rotar</span>
-                    </label>
+                      ><RotateCcwSquare className='w-4 h-4' /> Puede rotar</button>
+                    </div>
                   </div>
                 )}
               </div>
@@ -642,7 +646,7 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
                           <button
                             type="button"
                             onClick={() => eliminarFila(idx)}
-                            className="text-stitch-text-muted hover:text-stitch-danger p-4 transition-colors w-full"
+                            className="text-stitch-text-muted hover:text-red-500 p-4 transition-colors w-full"
                             title="Eliminar fila"
                           >
                             <Trash2 className="w-5 h-5 mx-auto" />
@@ -694,53 +698,96 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
         {/* — Mobile footer: 2 filas — */}
         <div className="md:hidden px-4 pt-3 pb-4 space-y-2.5">
           {/* Fila 1: acciones secundarias */}
-          <div className="flex gap-2">
-            {!soloLectura && (
+
+          {soloLectura ? (
+            <div className="flex flex-row gap-2">
+              <button
+                onClick={handleCopiarTxt}
+                className={`basis-1/3 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border transition-all text-xs font-bold ${copiado
+                  ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 dark:border-emerald-500/20'
+                  : 'bg-stitch-surface-alt text-stitch-text border-stitch-border'
+                  }`}
+              >
+                {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                {copiado ? 'Copiado' : 'Copiar'}
+              </button>
+              <button
+                onClick={handleDescargarTxt}
+                className="basis-1/3 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-stitch-text-muted hover:text-stitch-primary hover:bg-stitch-primary/10 transition-all border border-stitch-border/50 hover:border-stitch-primary/30"
+              >
+                <FileText className="w-4 h-4" />
+                <span>.TXT</span>
+              </button>
+              {jobId ? (
+                <a
+                  href={apiService.getExportarExcelUrl(jobId)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="basis-1/3 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all border border-stitch-border/50 hover:border-emerald-500/30"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>EXCEL</span>
+                </a>
+              ) : (
+                <button
+                  onClick={handleDescargarExcel}
+                  className="basis-1/3 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600/50 dark:text-emerald-500/50 transition-all border border-stitch-border/50 cursor-not-allowed"
+                >
+                  <FileSpreadsheet className="w-4 h-4" />
+                  <span>EXCEL</span>
+                </button>
+              )}
+            </div>
+          ) : (
+            <div className="flex flex-row gap-2">
               <button
                 onClick={agregarFila}
-                className="flex-1 flex items-center justify-center gap-2 py-2.5 bg-stitch-surface-alt text-stitch-text rounded-xl font-bold hover:brightness-95 transition-all border border-stitch-border text-sm"
+                className={`basis-2/5 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border transition-all text-xs font-bold ${corteAgregado
+                  ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 dark:border-emerald-500/20'
+                  : 'bg-stitch-surface-alt text-stitch-text border-stitch-border'
+                  }`}
               >
-                <Plus className="w-4 h-4 shrink-0" />
-                Agregar Pieza
+                {corteAgregado ? <Check className="w-4 h-4" /> : <Plus className="w-4 h-4" />}
+                {corteAgregado ? 'Agregado' : 'Agregar'}
               </button>
-            )}
-            <button
-              onClick={handleCopiarTxt}
-              className={`flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border transition-all text-xs font-bold ${copiado
-                ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 dark:border-emerald-500/20'
-                : 'bg-stitch-surface-alt text-stitch-text border-stitch-border'
-                }`}
-            >
-              {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
-              {copiado ? 'Copiado' : 'Copiar'}
-            </button>
-            <button
-              onClick={handleDescargarTxt}
-              className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-stitch-text-muted hover:text-stitch-primary hover:bg-stitch-primary/10 transition-all border border-stitch-border/50 hover:border-stitch-primary/30"
-            >
-              <FileText className="w-4 h-4" />
-              <span>.TXT</span>
-            </button>
-            {jobId ? (
-              <a
-                href={apiService.getExportarExcelUrl(jobId)}
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all border border-stitch-border/50 hover:border-emerald-500/30"
-              >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>EXCEL</span>
-              </a>
-            ) : (
+
               <button
-                onClick={handleDescargarExcel}
-                className="flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600/50 dark:text-emerald-500/50 transition-all border border-stitch-border/50 cursor-not-allowed"
+                onClick={handleCopiarTxt}
+                className={`basis-1/5 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl border transition-all text-xs font-bold ${copiado
+                  ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30 dark:text-emerald-400 dark:border-emerald-500/20'
+                  : 'bg-stitch-surface-alt text-stitch-text border-stitch-border'
+                  }`}
               >
-                <FileSpreadsheet className="w-4 h-4" />
-                <span>EXCEL</span>
+                {copiado ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
               </button>
-            )}
-          </div>
+              <button
+                onClick={handleDescargarTxt}
+                className="basis-1/5 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-stitch-text-muted hover:text-stitch-primary hover:bg-stitch-primary/10 transition-all border border-stitch-border/50 hover:border-stitch-primary/30"
+              >
+                {/* <FileText className="w-4 h-4" /> */}
+                <span>.TXT</span>
+              </button>
+              {jobId ? (
+                <a
+                  href={apiService.getExportarExcelUrl(jobId)}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="basis-1/5 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600 dark:text-emerald-500 hover:text-emerald-700 dark:hover:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-all border border-stitch-border/50 hover:border-emerald-500/30"
+                >
+                  {/* <FileSpreadsheet className="w-4 h-4" /> */}
+                  <span>EXCEL</span>
+                </a>
+              ) : (
+                <button
+                  onClick={handleDescargarExcel}
+                  className="basis-1/5 flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-bold text-emerald-600/50 dark:text-emerald-500/50 transition-all border border-stitch-border/50 cursor-not-allowed"
+                >
+                  {/* <FileSpreadsheet className="w-4 h-4" /> */}
+                  <span>EXCEL</span>
+                </button>
+              )}
+            </div>
+          )}
 
           {/* Fila 2: acción principal */}
           {soloLectura ? (

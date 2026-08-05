@@ -123,7 +123,7 @@ async def exportar_trabajo_txt(id_trabajo: int, db: AsyncSession = Depends(get_d
         raise HTTPException(status_code=404, detail="Trabajo no encontrado")
 
     contenido = generar_contenido_txt(trabajo)
-    nombre_archivo = f"trabajo_{trabajo.id}_{trabajo.nombre.replace(' ', '_')}.txt"
+    nombre_archivo = f"{trabajo.nombre.replace(' ', '_')}_{trabajo.fecha.date()}.txt"
 
     return PlainTextResponse(
         content=contenido,
@@ -141,7 +141,7 @@ async def exportar_trabajo_excel(id_trabajo: int, db: AsyncSession = Depends(get
         raise HTTPException(status_code=404, detail="Trabajo no encontrado")
 
     excel_bytes = generar_excel(trabajo)
-    nombre_archivo = f"trabajo_{trabajo.id}_{trabajo.nombre.replace(' ', '_')}.xlsx"
+    nombre_archivo = f"{trabajo.nombre.replace(' ', '_')}_{trabajo.fecha.date()}.xlsx"
 
     return StreamingResponse(
         excel_bytes,

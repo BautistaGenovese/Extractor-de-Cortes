@@ -5,7 +5,7 @@ import Dropzone from './components/Dropzone';
 import TablaCortes from './components/TablaCortes';
 import Historial from './components/Historial';
 import { apiService, setAuthTokenGetter } from './api';
-import { UploadCloud, Folder, ArrowLeft } from 'lucide-react';
+import { UploadCloud, Folder, ArrowLeft, SearchAlert } from 'lucide-react';
 import { useToast } from './components/Toaster';
 import { useConfirm } from './components/ConfirmModal';
 import { useAuth, useUser } from '@clerk/clerk-react';
@@ -138,7 +138,7 @@ export default function App() {
       setNombreDraft('');
       setArchivosDraft([]);
       await cargarDatos();
-      
+
       if (isNewJob && savedJobId) {
         navigate(`/trabajo/${savedJobId}`);
       } else {
@@ -201,11 +201,11 @@ export default function App() {
 
       <main className="container mx-auto px-3 py-4 md:px-4 md:py-6">
         {/* Pestañas de Navegación (Siempre visibles) */}
-        <div className="flex justify-center mb-6 md:mb-0">
-          <div className="relative bg-stitch-surface-alt p-1.5 rounded-2xl shadow-sm border border-stitch-border/50 transition-colors inline-grid grid-cols-2 gap-1 w-full max-w-[420px]">
+        <div className="flex justify-center mb-4 md:mb-0">
+          <div className="relative bg-stitch-surface-alt p-1.5 rounded-full md:rounded-2xl shadow-sm border border-stitch-border/50 transition-colors inline-grid grid-cols-2 gap-1 w-full max-w-[420px]">
             {/* Sliding Pill */}
             <div
-              className="absolute top-1.5 bottom-1.5 bg-stitch-secondary-container rounded-xl shadow-sm transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+              className="absolute top-1.5 bottom-1.5 bg-stitch-secondary-container rounded-full md:rounded-xl shadow-sm transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
               style={{
                 width: 'calc(50% - 8px)',
                 left: pestanaActiva === 'nuevo' ? '6px' : 'calc(50% + 2px)'
@@ -214,13 +214,13 @@ export default function App() {
 
             <button
               onClick={() => navigate('/nuevo')}
-              className={`relative z-10 flex items-center justify-center gap-2 px-6 py-2.5 rounded-xl font-label-sm font-bold text-label-sm transition-all duration-300 ${pestanaActiva === 'nuevo'
+              className={`relative z-10 flex items-center justify-center gap-2 px-6 py-2.5 rounded-full md:rounded-xl font-label-sm font-bold text-label-sm transition-all duration-300 ${pestanaActiva === 'nuevo'
                 ? 'text-stitch-on-secondary-container'
                 : 'text-stitch-text-muted hover:text-stitch-text hover:bg-stitch-lavender/50'
                 }`}
             >
               <UploadCloud className="w-5 h-5" />
-              Nuevo Trabajo
+              <p>Nuevo <span className='hidden md:inline'>Trabajo</span></p>
             </button>
 
             <button
@@ -306,16 +306,32 @@ export default function App() {
 // Componente auxiliar para cargar un trabajo directo por URL si no está en estado
 function TrabajoView({ trabajos, borradorTrabajo, trabajoEnEdicionId, onCargarParaEditar, handleGuardar, cargandoGuardar, soloLectura, setSoloLectura }) {
   const { id } = useParams();
+  const [noEncontrado, setNoEncontrado] = useState(false);
 
   useEffect(() => {
     // Solo cargamos si el ID de la URL es distinto al que tenemos en memoria
     if (trabajos.length > 0 && String(id) !== String(trabajoEnEdicionId)) {
       const t = trabajos.find(x => String(x.id) === String(id));
       if (t) {
+        setNoEncontrado(false);
         onCargarParaEditar(t, true);
+      } else {
+        setNoEncontrado(true);
       }
     }
   }, [id, trabajos, trabajoEnEdicionId, onCargarParaEditar]);
+
+  if (noEncontrado) {
+    return (
+      <div className="bg-stitch-surface rounded-2xl p-8 border border-stitch-border shadow-xl max-w-[820px] mx-auto my-6 md:my-8 text-center text-stitch-text-muted transition-colors duration-300">
+        <SearchAlert className="w-12 h-12 mx-auto mb-3 text-stitch-text-muted/50" />
+        <p className="text-base font-medium">Trabajo no encontrado.</p>
+        <p className="text-xs text-stitch-text-muted/70 mt-1">
+          Prueba con ingresar un trabajo válido.
+        </p>
+      </div>
+    )
+  }
 
   if (!borradorTrabajo || String(trabajoEnEdicionId) !== String(id)) {
     return (

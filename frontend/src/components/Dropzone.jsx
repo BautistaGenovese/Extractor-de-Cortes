@@ -27,7 +27,7 @@ export default function Dropzone({ onAnalizar, cargando, archivos, setArchivos }
   };
 
   return (
-    <div className="bg-stitch-surface rounded-2xl p-4 md:p-6 border border-stitch-border shadow-xl max-w-[820px] mx-auto my-4 md:my-8 text-stitch-text transition-colors duration-300">
+    <div className="bg-stitch-surface rounded-2xl p-4 md:p-6 border border-stitch-border shadow-xl max-w-[820px] mx-auto my-4 md:my-6 text-stitch-text transition-colors duration-300">
       <h2 className="text-xl font-bold mb-4 flex items-center gap-2">
         <FileImage className="w-6 h-6 text-stitch-primary shrink-0" />
         Subir Hojas de Corte

@@ -68,7 +68,7 @@ export default function Navbar({ usuario, isDarkMode, toggleTheme }) {
           <div className="flex items-center gap-2 min-w-0">
             <PencilRuler className="w-5 h-5 md:w-6 md:h-6 text-stitch-primary shrink-0" strokeWidth={2.0} />
             <h1 className="font-bold text-stitch-primary text-base md:text-xl leading-tight truncate mr-2 md:mr-4">
-              Extractor de Cortes
+              <span className='hidden md:inline'>Extractor</span><span className='md:hidden'>Ext.</span> de Cortes
             </h1>
           </div>
 
