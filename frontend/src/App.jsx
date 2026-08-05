@@ -4,10 +4,10 @@ import Navbar from './components/Navbar';
 import Dropzone from './components/Dropzone';
 import TablaCortes from './components/TablaCortes';
 import Historial from './components/Historial';
-import { apiService, setAuthTokenGetter } from './api';
-import { UploadCloud, Folder, ArrowLeft, SearchAlert } from 'lucide-react';
 import { useToast } from './components/Toaster';
 import { useConfirm } from './components/ConfirmModal';
+import { apiService, setAuthTokenGetter } from './api';
+import { UploadCloud, Folder, ArrowLeft, SearchAlert } from 'lucide-react';
 import { useAuth, useUser } from '@clerk/clerk-react';
 
 export default function App() {

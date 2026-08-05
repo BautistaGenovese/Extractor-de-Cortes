@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Plus, Trash2, CheckCircle, Edit2, AlertCircle, Copy, Download, Check, Loader2, Activity, Scissors, FileText, FileSpreadsheet, Info, RotateCcwSquare, ChevronDown } from 'lucide-react';
 import { useToast } from './Toaster';
 import { apiService } from '../api';
+import ScrollToTop from './ScrollToTop';
 
 function ImageThumbnail({ file }) {
   const [src, setSrc] = useState('');
@@ -270,7 +271,7 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
         .card-fields-enter { animation: slideDown 0.18s ease-out forwards; }
       `}</style>
 
-      <div className="bg-stitch-surface rounded-xl p-4 md:p-6 border border-stitch-border/30 shadow-xl max-w-[1280px] mx-auto mt-4 md:mt-6 mb-36 text-stitch-text transition-colors duration-300">
+      <div className="bg-stitch-surface rounded-xl p-4 md:p-6 border border-stitch-border/30 shadow-xl max-w-[1280px] mx-auto mt-4 md:mt-6 md:mb-36 mb-48 text-stitch-text transition-colors duration-300">
 
         {/* Header — Nombre del trabajo */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 md:mb-6">
@@ -892,6 +893,7 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
           </div>
         </div>
       </footer>
+      <ScrollToTop bottomClass={'bottom-36 md:bottom-26'} />
     </>
   );
 }
