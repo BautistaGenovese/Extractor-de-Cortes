@@ -3,7 +3,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from fastapi import HTTPException, status
 
-from app.models import Trabajo, Corte, Usuario
+from app.models import Obra, Trabajo, Corte, Usuario
 from app.schemas import ListaCortesIA, TrabajoResponse, CorteResponse
 
 
@@ -31,7 +31,8 @@ async def guardar_trabajo_confirmado(
     db: AsyncSession,
     usuario: Usuario,
     nombre_trabajo: str,
-    cortes_data: list
+    cortes_data: list,
+    id_obra: str = None
 ) -> Trabajo:
     # 1. Descontar crédito
     usuario.creditos_restantes -= 1
@@ -39,7 +40,8 @@ async def guardar_trabajo_confirmado(
     # 2. Crear trabajo
     nuevo_trabajo = Trabajo(
         id_usuario=usuario.id,
-        nombre=nombre_trabajo
+        nombre=nombre_trabajo,
+        id_obra=id_obra
     )
     db.add(nuevo_trabajo)
     await db.flush()
@@ -70,11 +72,38 @@ async def guardar_trabajo_confirmado(
     return res.scalar_one()
 
 
+async def guardar_obra(
+    db: AsyncSession,
+    usuario: Usuario,
+    nombre_obra: str,
+    nombre_cliente: str,
+    descripcion_obra: str
+) -> Obra:
+    nueva_obra = Obra(
+        nombre = nombre_obra,
+        nombre_cliente = nombre_cliente,
+        descripcion = descripcion_obra
+    )
+
+    db.add(nueva_obra)
+    await db.flush()
+    await db.commit()
+
+    stmt = (
+        select(Obra)
+        .where(Obra.id == nueva_obra.id)
+        .options(selectinload(Obra.trabajos))
+    )
+    res = await db.execute(stmt)
+    return res.scalar_one()
+
+
 async def actualizar_trabajo_existente(
     db: AsyncSession,
     id_trabajo: int,
     nombre_trabajo: str,
-    cortes_data: list
+    cortes_data: list,
+    id_obra: str = None
 ) -> Trabajo:
     stmt = select(Trabajo).where(Trabajo.id == id_trabajo).options(selectinload(Trabajo.cortes))
     res = await db.execute(stmt)
@@ -85,6 +114,8 @@ async def actualizar_trabajo_existente(
 
     if nombre_trabajo:
         trabajo.nombre = nombre_trabajo
+
+    trabajo.id_obra = id_obra
 
     # 1. Eliminar cortes viejos en la BD
     for c_viejo in trabajo.cortes:
@@ -168,6 +199,7 @@ def mapear_trabajo_a_response(trabajo: Trabajo) -> TrabajoResponse:
     return TrabajoResponse(
         id=trabajo.id,
         id_usuario=trabajo.id_usuario,
+        id_obra=trabajo.id_obra,
         nombre=trabajo.nombre,
         fecha=trabajo.fecha,
         cortes=cortes_response

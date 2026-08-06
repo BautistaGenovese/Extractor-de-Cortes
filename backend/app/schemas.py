@@ -38,18 +38,31 @@ class CorteCreate(BaseModel):
 
 class TrabajoCreate(BaseModel):
     id_usuario: str
+    id_obra: Optional[str] = None
     nombre: str
+
+class ObraCreate(BaseModel):
+    nombre: str
+    nombre_cliente: Optional[str] = None
+    descripcion: Optional[str] = None
 
 class TrabajoGuardarRequest(BaseModel):
     """Payload para guardar el borrador confirmado desde el Frontend"""
     nombre_trabajo: str = "Trabajo sin nombre"
+    id_obra: Optional[str] = None
     cortes: List[CorteCreate]
 
 class TrabajoUpdate(BaseModel):
     """Payload para modificar un trabajo y sus cortes ya existentes"""
     nombre: Optional[str] = None
+    id_obra: Optional[str] = None
     cortes: List[CorteCreate]
 
+class ObraUpdate(BaseModel):
+    """Payload para modificar una Obra y sus trabajos ya existentes"""
+    nombre: Optional[str] = None
+    nombre_cliente: Optional[str] = None
+    descripcion: Optional[str] = None
 
 # 3. SCHEMAS DE SALIDA (RESPONSES DE LA API)
 class CorteResponse(BaseModel):
@@ -75,12 +88,23 @@ class CorteResponse(BaseModel):
 class TrabajoResponse(BaseModel):
     id: int
     id_usuario: str
+    id_obra: Optional[str] = None
     nombre: str
     fecha: datetime
     cortes: List[CorteResponse] = []
 
     model_config = ConfigDict(from_attributes=True)
 
+
+class ObraResponse(BaseModel):
+    id: str
+    id_usuario: str
+    nombre: str
+    nombre_cliente: Optional[str] = None
+    descripcion: Optional[str] = None
+    fecha_creacion: datetime
+
+    model_config = ConfigDict(from_attributes=True)
 
 class UsuarioResponse(BaseModel):
     id: str

@@ -62,7 +62,7 @@ export default function Navbar({ usuario, isDarkMode, toggleTheme }) {
       )}
 
       <header className="bg-stitch-surface/80 backdrop-blur-xl sticky top-0 z-50 shadow-sm border-b border-stitch-border/30 transition-colors duration-300">
-        <div className="max-w-[1280px] mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3">
+        <div className="max-w-[820px] mx-auto px-4 md:px-6 py-3 md:py-4 flex items-center justify-between gap-3">
 
           {/* Logo + Título */}
           <div className="flex items-center gap-2 min-w-0">

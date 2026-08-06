@@ -6,7 +6,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from app.database import engine, Base
 import app.models
-from app.routers import trabajos, usuarios
+from app.routers import trabajos, usuarios, obras
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -36,6 +36,7 @@ app.add_middleware(
 # Incluir las rutas
 app.include_router(trabajos.router)
 app.include_router(usuarios.router)
+app.include_router(obras.router)
 
 @app.get("/")
 async def root():

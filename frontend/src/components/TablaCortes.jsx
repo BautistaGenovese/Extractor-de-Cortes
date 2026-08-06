@@ -3,6 +3,7 @@ import { Plus, Trash2, CheckCircle, Edit2, AlertCircle, Copy, Download, Check, L
 import { useToast } from './Toaster';
 import { apiService } from '../api';
 import ScrollToTop from './ScrollToTop';
+import ObraModal from './proyectos/ObraModal';
 
 function ImageThumbnail({ file }) {
   const [src, setSrc] = useState('');
@@ -26,7 +27,7 @@ function ImageThumbnail({ file }) {
   );
 }
 
-export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInicial, onGuardar, cargandoGuardar, soloLectura, onActivarEdicion, onCancelarEdicion, isNew, fotos }) {
+export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInicial, obras = [], idObraInicial, onGuardar, cargandoGuardar, soloLectura, onActivarEdicion, onCancelarEdicion, isNew, fotos, onCrearObra }) {
   const toast = useToast();
 
   const [cortes, setCortes] = useState(
@@ -35,9 +36,13 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
       : [{ cantidad: '', largo_mm: '', ancho_mm: '', descripcion: '', puede_rotar: true, tapacanto_largo: 0, tapacanto_ancho: 0 }]
   );
   const [nombreTrabajo, setNombreTrabajo] = useState(nombreTrabajoInicial || 'Trabajo sin nombre');
+  const [idObra, setIdObra] = useState(idObraInicial || '');
   const [intentosGuardado, setIntentosGuardado] = useState(false);
   const [copiado, setCopiado] = useState(false);
   const [corteAgregado, setCorteAgregado] = useState(false);
+  const [isSelectObraOpen, setIsSelectObraOpen] = useState(false);
+  const [mostrarModalObra, setMostrarModalObra] = useState(false);
+
   // Activacion del panel de edición expandido (solo mobile)
   const [isExpanded, setExpandedRow] = useState();
 
@@ -56,11 +61,25 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
   const snapshotInicial = useRef({
     nombre: (nombreTrabajoInicial || 'Trabajo sin nombre').trim(),
     cortes: (cortesIniciales && cortesIniciales.length > 0 ? cortesIniciales : []).map(normalizeCorte),
+    id_obra: idObraInicial || ''
   });
+
+  const obraDropdownRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (obraDropdownRef.current && !obraDropdownRef.current.contains(event.target)) {
+        setIsSelectObraOpen(false);
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Retorna true si el usuario modificó algo respecto al estado inicial
   const hayaCambios = () => {
     if (nombreTrabajo.trim() !== snapshotInicial.current.nombre) return true;
+    if (idObra !== snapshotInicial.current.id_obra) return true;
     if (cortes.length !== snapshotInicial.current.cortes.length) return true;
     const normActual = JSON.stringify(cortes.map(normalizeCorte));
     const normInicial = JSON.stringify(snapshotInicial.current.cortes);
@@ -202,7 +221,21 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
       tapacanto_ancho: parseInt(c.tapacanto_ancho) || 0,
       puede_rotar: Boolean(c.puede_rotar),
     }));
-    onGuardar(nombreTrabajo, cortesValidados);
+    onGuardar(nombreTrabajo, cortesValidados, idObra === '' ? null : idObra);
+  };
+
+  const handleGuardarNuevaObra = async (nombre, cliente, descripcion) => {
+    try {
+      if (onCrearObra) {
+        const res = await onCrearObra(nombre, cliente, descripcion);
+        if (res && res.id) {
+          setIdObra(res.id); // Auto-selecciona la obra recién creada
+        }
+      }
+      setMostrarModalObra(false);
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Clases reutilizables para campos de las cards mobile
@@ -271,7 +304,7 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
         .card-fields-enter { animation: slideDown 0.18s ease-out forwards; }
       `}</style>
 
-      <div className="bg-stitch-surface rounded-xl p-4 md:p-6 border border-stitch-border/30 shadow-xl max-w-[1280px] mx-auto mt-4 md:mt-6 md:mb-36 mb-48 text-stitch-text transition-colors duration-300">
+      <div className="bg-stitch-surface rounded-xl p-4 md:p-6 border border-stitch-border/30 shadow-xl max-w-[820px] mx-auto mt-4 md:mt-6 md:mb-36 mb-48 text-stitch-text transition-colors duration-300">
 
         {/* Header — Nombre del trabajo */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-5 md:mb-6">
@@ -291,14 +324,79 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
               {!soloLectura && <Edit2 className="w-4 h-4 text-stitch-text-muted opacity-40 group-hover:opacity-100 absolute right-4 pointer-events-none transition-opacity" />}
             </div>
           </div>
+
+          <div className="flex-1 max-w-md">
+            <label className="block text-xs font-bold text-stitch-text-muted mb-2 uppercase tracking-wider">
+              Asignar a una Obra <span className='text-stitch-text-muted/60 text-[0.6rem]'>(Opcional)</span>
+            </label>
+            <div className="w-full flex flex-row" ref={obraDropdownRef}>
+              <div className="relative flex-1">
+                <div
+                  onClick={() => !soloLectura && setIsSelectObraOpen(!isSelectObraOpen)}
+                  className={`w-full bg-stitch-surface-alt border border-stitch-border/50 ${isSelectObraOpen ? 'border-stitch-primary' : ''} font-bold text-lg ${idObra ? 'text-stitch-primary' : 'text-stitch-text-muted/60'} rounded-lg px-4 py-3 outline-none transition-all shadow-sm ${soloLectura ? 'opacity-80 cursor-not-allowed' : 'cursor-pointer'} flex items-center justify-between`}
+                >
+                  <span className="truncate">
+                    {(idObra && obras.find(o => o.id === idObra)?.nombre) || 'Sin asignar'}
+                  </span>
+                  <ChevronDown
+                    className={`w-5 h-5 flex-shrink-0 transition-transform duration-300 pointer-events-none ${isSelectObraOpen ? 'rotate-180 text-stitch-primary opacity-100' : 'text-stitch-text-muted opacity-50'}`}
+                  />
+                </div>
+
+                {isSelectObraOpen && !soloLectura && (
+                  <div className="absolute top-full left-0 z-50 w-full mt-2 bg-stitch-surface border border-stitch-border/50 rounded-lg shadow-xl max-h-60 overflow-y-auto py-1">
+                    <div
+                      className={`px-4 py-3 hover:bg-stitch-primary/5 cursor-pointer text-base font-medium transition-colors ${!idObra ? 'text-stitch-primary bg-stitch-primary/10' : 'text-stitch-text'}`}
+                      onClick={() => {
+                        setIdObra("");
+                        setIsSelectObraOpen(false);
+                      }}
+                    >
+                      Sin asignar
+                    </div>
+                    {obras.map(obra => (
+                      <div
+                        key={obra.id}
+                        className={`px-4 py-3 hover:bg-stitch-primary/5 cursor-pointer text-base font-medium transition-colors ${idObra === obra.id ? 'text-stitch-primary bg-stitch-primary/10' : 'text-stitch-text'}`}
+                        onClick={() => {
+                          setIdObra(obra.id);
+                          setIsSelectObraOpen(false);
+                        }}
+                      >
+                        {obra.nombre}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <button
+                onClick={() => {
+                  setIsSelectObraOpen(false);
+                  setMostrarModalObra(true);
+                }}
+                className="bg-stitch-primary text-stitch-on-primary m-1 mr-0 ml-2 px-4 py-3 rounded-xl disabled:opacity-80 text-sm font-bold flex items-center hover:brightness-110 transition-all shadow-sm justify-center"
+                disabled={soloLectura}
+              >
+                <Plus className="w-4 h-4" />
+              </button>
+            </div>
+          </div>
         </div>
+
+        {/* Modal Nueva Obra */}
+        <ObraModal
+          visible={mostrarModalObra}
+          obraEditar={null}
+          onGuardar={handleGuardarNuevaObra}
+          onCerrar={() => setMostrarModalObra(false)}
+        />
 
         {/* Estadísticas en modo lectura */}
         {soloLectura && stats && (
           <div className="grid grid-cols-2 gap-3 mb-5 md:mb-6">
             <div className="bg-emerald-500/10 dark:bg-emerald-500/5 p-3 md:p-4 rounded-xl border border-emerald-500/20 flex flex-col md:flex-row items-center gap-2 md:gap-4 text-center md:text-left">
               <div className="w-8 h-8 md:w-10 md:h-10 bg-emerald-500/20 rounded-lg flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
-                <Activity className="w-4 h-4 md:w-5 md:h-5" />
+                <Activity className="w-4 h-4" />
               </div>
               <div>
                 <p className="text-emerald-700/70 dark:text-emerald-400/70 text-[10px] md:text-xs font-bold uppercase tracking-wider leading-tight">
@@ -311,21 +409,21 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
             </div>
 
             <div className="bg-indigo-500/10 dark:bg-indigo-500/5 p-3 md:p-4 rounded-xl border border-indigo-500/20 flex flex-col md:flex-row items-center gap-2 md:gap-4 text-center md:text-left">
-              <div className="w-8 h-8 md:w-10 md:h-10 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
-                <Scissors className="w-4 h-4 md:w-5 md:h-5" />
+              <div className="w-8 h-8 bg-indigo-500/20 rounded-lg flex items-center justify-center text-indigo-600 dark:text-indigo-400 shrink-0">
+                <Scissors className="w-4 h-4" />
               </div>
               <div className="flex flex-col">
-                <p className="text-indigo-700/70 dark:text-indigo-400/70 text-[10px] md:text-xs font-bold uppercase tracking-wider leading-tight">
-                  Canto Total
-                </p>
-                <div className="flex flex-col items-center md:items-start">
-                  <p className="text-lg md:text-xl font-bold text-indigo-700 dark:text-indigo-400 leading-tight">
-                    {stats.cantoBruto} m
+                <div className="flex flex-col md:flex-row md:items-center md:gap-2 items-center">
+                  <p className="text-indigo-700/70 dark:text-indigo-400/70 text-xs font-bold uppercase tracking-wider leading-tight">
+                    Canto Total
                   </p>
                   <p className="text-[10px] text-indigo-700/60 dark:text-indigo-400/60 font-medium leading-tight mt-0.5">
-                    Neto: {stats.cantoNeto} m
+                    (Neto: {stats.cantoNeto} m)
                   </p>
                 </div>
+                <p className="text-lg md:text-xl font-bold text-indigo-700 dark:text-indigo-400 leading-tight">
+                  {stats.cantoBruto} m
+                </p>
               </div>
             </div>
           </div>
@@ -816,7 +914,7 @@ export default function TablaCortes({ jobId, cortesIniciales, nombreTrabajoInici
         </div>
 
         {/* — Desktop footer: fila única — */}
-        <div className="hidden md:flex max-w-[1280px] mx-auto px-6 py-4 flex-wrap gap-4 items-center justify-between">
+        <div className="hidden md:flex max-w-[820px] mx-auto px-6 py-4 flex-wrap gap-4 items-center justify-between">
           <div className="flex gap-3">
             {!soloLectura && (
               <button

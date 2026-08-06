@@ -54,10 +54,11 @@ export const apiService = {
     },
 
     // 3. Guardar el trabajo confirmado (Paso 2: Persiste en DB y resta 1 crédito)
-    guardarTrabajo: async (nombreTrabajo, cortes) => {
+    guardarTrabajo: async (nombreTrabajo, cortes, idObra = null) => {
         const payload = {
             nombre_trabajo: nombreTrabajo,
             cortes: cortes,
+            id_obra: idObra,
         };
         const res = await api.post('/trabajos/guardar', payload);
         return res.data;
@@ -79,10 +80,11 @@ export const apiService = {
     },
 
     // 6. Actualizar trabajo existente (PUT)
-    actualizarTrabajo: async (idTrabajo, nombreTrabajo, cortes) => {
+    actualizarTrabajo: async (idTrabajo, nombreTrabajo, cortes, idObra = null) => {
         const payload = {
             nombre: nombreTrabajo,
-            cortes: cortes,
+            id_obra: idObra,
+            cortes: cortes
         };
         const res = await api.put(`/trabajos/${idTrabajo}`, payload);
         return res.data;
@@ -99,4 +101,35 @@ export const apiService = {
         const res = await api.get('/status');
         return res.data;
     },
+
+    // 9. Endpoints de Obras
+    getObrasUsuario: async () => {
+        const res = await api.get(`/obras/`);
+        return res.data;
+    },
+
+    crearObra: async (nombre, cliente = null, descripcion = null) => {
+        const payload = {
+            nombre: nombre,
+            nombre_cliente: cliente,
+            descripcion: descripcion
+        };
+        const res = await api.post(`/obras/`, payload);
+        return res.data;
+    },
+
+    actualizarObra: async (idObra, nombre, cliente = null, descripcion = null) => {
+        const payload = {
+            nombre: nombre,
+            nombre_cliente: cliente,
+            descripcion: descripcion
+        };
+        const res = await api.put(`/obras/${idObra}`, payload);
+        return res.data;
+    },
+
+    eliminarObra: async (idObra) => {
+        const res = await api.delete(`/obras/${idObra}`);
+        return res.data;
+    }
 };

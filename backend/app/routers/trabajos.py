@@ -77,7 +77,8 @@ async def guardar_trabajo(
         db=db,
         usuario=usuario,
         nombre_trabajo=payload.nombre_trabajo,
-        cortes_data=payload.cortes
+        cortes_data=payload.cortes,
+        id_obra=payload.id_obra
     )
 
     return mapear_trabajo_a_response(nuevo_trabajo)
@@ -107,7 +108,8 @@ async def modificar_trabajo(
         db=db,
         id_trabajo=id_trabajo,
         nombre_trabajo=payload.nombre,
-        cortes_data=payload.cortes
+        cortes_data=payload.cortes,
+        id_obra=payload.id_obra
     )
     return mapear_trabajo_a_response(trabajo_actualizado)
 
